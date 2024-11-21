@@ -1,0 +1,20 @@
+#!/bin/sh
+#SBATCH --job-name=ConfoWoerpelMe
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --output=ConfoWoerpelMe.logfile
+#SBATCH --time=10:00:00
+
+#Defining Gaussian Parameters
+export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH
+
+#Loading modules
+module load intel/2023a
+module load AMS/2024.102-iimpi-2023a-intelmpi
+module load SciPy-bundle/2023.07-gfbf-2023a
+module load sPyRMSD/0.8.0-foss-2023a
+module load OpenBabel/3.1.1-gompi-2023a
+
+#Launching calculation
+./Automated_CREST_INPUT.py startgeom.out 
+
