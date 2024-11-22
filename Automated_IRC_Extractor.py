@@ -5,7 +5,35 @@ import re
 
 with open('../parameters.txt', 'r') as parameters:
     file_content = parameters.read()
+    
+    functional = re.search(r'Functional (.+)', file_content)
+    functional = functional.group(1)
 
+    basis_in= re.search(r'Basis (.+)', file_content)
+    basis_in= basis.group(1)
+    if basis_in.lower()=='cbs':
+        basis_1='cc-pvdz'
+        basis_2='cc-pvtz'
+        basis_3='cc-pvqz'
+    else:
+        basis_1=basis_in
+
+    dispersion = re.search(r'Dispersion (.+)', file_content)
+    dispersion = dispersion.group(1)
+    if dispersion == 'none' or dispersion == 'None':
+        dispersion = ''
+
+    solvent = re.search(r'DFT solvent (.+)', file_content)
+    solvent = solvent.group(1)
+    if solvent == 'none' or solvent == 'None':
+        solvent = ''
+
+    charge = re.search(r'Charge (-?\d+)', file_content)
+    charge = charge.group(1)
+
+    multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
+    multiplicity = multiplicity.group(1)
+    
     # Extract the size_molecule value
     size_molecule_match = re.search(r'size_molecule\s*=\s*(\d+)', file_content)
     if size_molecule_match:
@@ -24,29 +52,14 @@ CC1=CC1_in
 def geometryextractor(logfile):
     with open(logfile, 'r') as file:
         lines = file.readlines()
-    #convergence_indices = []
-    #for i, line in enumerate(lines):
-    #    if "Delta-x Convergence Met" in line:
-    #        convergence_indices.append(i)
+
     convergence_indices = []
     for i, line in enumerate(lines):
         if "Input orientation" in line:
             convergence_indices.append(i)
 
     conv_geom=convergence_indices[-1]+5
-    
-    
-    #print("convergence found")
-    
-    #index=conv_geom
-    #found=False
-    #while found==False:
-    #    if "Number     Number" in lines[index]:
-    #        found=True
-    #        index=index+2
-    #    else:
-    #        index=index-1
-    #        continue
+
     print("geometry found ...")
     
     geometry= []
@@ -91,44 +104,45 @@ def inputgenerator(geometry, filename):
         ip.writelines("%nprocshared=8\n")
         ip.writelines("%mem=16GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# opt=calcfc freq m062x cc-pvdz empiricaldispersion=gd3\n")
+        ip.writelines(f"# opt=calcfc freq {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"optfreq"+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines("0 1\n")
+        ip.writelines(f"{charge} {multiplicity}\n")
         
         for atom in geometry:
             atom_line=atom[1]+" "+atom[2]+" "+atom[3]+" "+atom[4]+"\n"
             ip.writelines(atom_line)
         ip.writelines("\n")
-        
+
+        if basis_in.lower()=="cbs":
         #Writing Link1 part for cc-pVTZ
-        ip.writelines("--Link1--\n")
-        ip.writelines("%nprocshared=4\n")
-        ip.writelines("%mem=4GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint\n")
-        ip.writelines("\n")
-        Title=filename[:-4]+" "+"E_ccpvtz"+"\n"
-        ip.writelines(Title)
-        ip.writelines("\n")
-        ip.writelines("0 1\n")
-        ip.writelines("\n")
-        
-        #Writing Link1 part for cc-pVQZ
-        ip.writelines("--Link1--\n")
-        ip.writelines("%nprocshared=8\n")
-        ip.writelines("%mem=4GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint\n")
-        Title=filename[:-4]+" "+"E_ccpvqz"+"\n"
-        ip.writelines("\n")
-        ip.writelines(Title)
-        ip.writelines("\n")
-        ip.writelines("0 1\n")
-        ip.writelines("\n")
-        ip.close()
+            ip.writelines("--Link1--\n")
+            ip.writelines("%nprocshared=4\n")
+            ip.writelines("%mem=4GB\n")
+            ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
+            ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint\n")
+            ip.writelines("\n")
+            Title=filename[:-4]+" "+"E_ccpvtz"+"\n"
+            ip.writelines(Title)
+            ip.writelines("\n")
+            ip.writelines(f"{charge} {multiplicity}\n")
+            ip.writelines("\n")
+            
+            #Writing Link1 part for cc-pVQZ
+            ip.writelines("--Link1--\n")
+            ip.writelines("%nprocshared=8\n")
+            ip.writelines("%mem=4GB\n")
+            ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
+            ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint\n")
+            Title=filename[:-4]+" "+"E_ccpvqz"+"\n"
+            ip.writelines("\n")
+            ip.writelines(Title)
+            ip.writelines("\n")
+            ip.writelines(f"{charge} {multiplicity}\n")
+            ip.writelines("\n")
+            ip.close()
     return print("Input generated for " + filename[:-4])
 
 def atomwithfloats(atom):
@@ -199,7 +213,7 @@ def launcher(logfilelist):
                         gsub.write(f'sgx16 '+filename2+' 119 \n')
                         gsub.write('\n')
 
-                #os.system(f"sbatch "+reduced_filename+".sub")
+                os.system(f"sbatch "+reduced_filename+".sub")
     print("Launch complete...") 
                     
     
