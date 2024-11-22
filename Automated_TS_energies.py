@@ -102,7 +102,7 @@ def launcher(xyzlist):
             gsub.close()
             
         os.system(f"sbatch "+filename[:-4]+".sub")
-    return print("Launch complete...")
+    return print("Launch of TS energies complete...")
 
 launcher(listofTS)
 
