@@ -3,21 +3,35 @@ This code serves to analyse reactions of structures with flexible side chains. B
 # Startgeom.out
 The startgeom.out contains the output file of a Gaussian 16 calculation, where the initial TS was optimized. This will serve as the starting point of your calculation.
 # Parameters.txt
-This file will contain parameters used throughout the code:\n
+This file will contain parameters used throughout the code:
+
 CREST version --> indicate the CREST version
+
 CREST solvent --> indicate the CREST solvent
+
 RMSD threshold --> classically equal to 0.5
 Functional --> used functional for Gaussian optimization
+
 Unique base --> basis set for Gaussian optimization
+
 DFT solvent --> indicate solvent if necessary
+
 Additional calculation --> ?
+
 Excluding nodes --> 
+
 molecule1_atoms = --> list the atoms in molecule 1, space separated
+
 molecule2_atoms = --> list the atoms in molecule 2, space separated
+
 atom1 = --> indicate one atom that participates in the bond formation, coming from molecule 1
+
 atom2 = --> indicate the atom that will be bonded to atom 1
+
 size_molecule = --> indicate the number of atoms in your molecule
+
 CC1_in = --> indicate atom 1 and atom 2, e.g. "1 2"
+
 # Constraints.inp
 
 
