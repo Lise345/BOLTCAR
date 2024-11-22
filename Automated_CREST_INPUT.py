@@ -255,17 +255,13 @@ with open('script_CREST.sub', 'w') as file:
 # Construction of CREST folder
 os.mkdir('CREST')
 shutil.move('struc.xyz', 'CREST/struc.xyz')
-shutil.move('script_CREST.sub', 'CREST/script_CREST.sub')
+shutil.move('parameters.txt', 'CREST/parameters.txt')
 shutil.move('script_CREST.sub', 'CREST/script_CREST.sub')
 shutil.move('Automated_RMSD_INPUT.py', 'CREST/Automated_RMSD_INPUT.py')
-shutil.move('Automated_IRC_Calculation.py', 'CREST/Automated_IRC_Calculation.py')
-shutil.move('Automated_IRC_Extractor.py', 'CREST/Automated_IRC_Extractor.py')
 
 # Launch calculation
 os.chdir('CREST')
 os.system(f'sbatch script_CREST.sub')
-
-
 
 
 
