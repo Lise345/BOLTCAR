@@ -3,7 +3,7 @@ This code serves to analyse reactions of structures with flexible side chains. B
 # Startgeom.out
 The startgeom.out contains the output file of a Gaussian 16 calculation, where the initial TS was optimized. This will serve as the starting point of your calculation.
 # Parameters.txt
-This file will contain parameters used throughout the code:
+This file will contain parameters used throughout the code:\n
 CREST version --> indicate the CREST version
 CREST solvent --> indicate the CREST solvent
 RMSD threshold --> classically equal to 0.5
