@@ -19,4 +19,5 @@ cd TS-CREST/
 chmod 777 Results_CREST.py
 python Automated_Results_CREST.py
 cp ./FASTCAR_results.xlsx ../../FASTCAR_results.xlsx
+cp ./TS_analysis.xlsx ../../TS_analysis.xlsx
 
