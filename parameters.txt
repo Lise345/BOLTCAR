@@ -18,7 +18,7 @@ RMSD threshold  0.5
 
 
 Functional  m062x
-Unique base  cc-pvdz
+Basis  cbs
 Dispersion  empiricaldispersion=gd3
 DFT solvent  none
 Additional calculation  none
