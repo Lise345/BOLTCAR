@@ -15,9 +15,40 @@ import glob
 import pandas as pd
 import openpyxl
 
+file_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "parameters.txt")
+with open(file_path,'r') as parameters:
+    file_content = parameters.read()
+    
+    functional = re.search(r'Functional (.+)', file_content)
+    functional = functional.group(1)
+
+    basis_in= re.search(r'Basis (.+)', file_content)
+    basis_in= basis.group(1)
+    if basis_in.lower()=='cbs':
+        basis_2='cc-pvtz'
+	basis_3='cc-pvqz'
+    else:
+        print("This calculation is only relevant for CBS extrapolation)
+	sys.exit()
+
+    dispersion = re.search(r'Dispersion (.+)', file_content)
+    dispersion = dispersion.group(1)
+    if dispersion == 'none' or dispersion == 'None':
+        dispersion = ''
+
+    solvent = re.search(r'DFT solvent (.+)', file_content)
+    solvent = solvent.group(1)
+    if solvent == 'none' or solvent == 'None':
+        solvent = ''
+
+    charge = re.search(r'Charge (-?\d+)', file_content)
+    charge = charge.group(1)
+
+    multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
+    multiplicity = multiplicity.group(1)
+
 workbook = openpyxl.load_workbook("TS_analysis.xlsx")
 sheet = workbook.active
-
 
 data = []
 for column in sheet.iter_cols(values_only=True):
@@ -36,45 +67,32 @@ def SP_inputgenerator(xyzfile,filename):
     with open(xyzfile, 'r') as file:
         lines = file.readlines()
     with open(filename, 'x') as ip:
+	#Writing part for cc-pVTZ
         ip.writelines("%nprocshared=4\n")
         ip.writelines("%mem=4GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# opt=(calcfc,ts,noeigentest) freq cc-pvdz empiricaldispersion=gd3 m062x\n")
+        ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVTZ_SP"+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines("0 1\n")
+        ip.writelines(f"{charge} {multiplicity}\n")
         
         for atom in lines[2:]:
             ip.writelines(atom)
         ip.writelines("\n")
         
-        #Writing Link1 part for cc-pVTZ
+        #Writing Link1 part for cc-pVQZ
         ip.writelines("--Link1--\n")
         ip.writelines("%nprocshared=4\n")
         ip.writelines("%mem=4GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint \n")
-        ip.writelines("\n")
-        Title=filename[:-4]+" "+"cc-pVQT_SP"+"\n"
-        ip.writelines(Title)
-        ip.writelines("\n")
-        ip.writelines("0 1\n")
-        ip.writelines("\n")
-        
-
-	    #Writing Link1 part for cc-pVQZ
-        ip.writelines("--Link1--\n")
-        ip.writelines("%nprocshared=4\n")
-        ip.writelines("%mem=4GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint \n")
+        ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVQZ_SP"+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines("0 1\n")
+        ip.writelines(f"{charge} {multiplicity}\n")
         ip.writelines("\n")
         ip.close()
     return print("Input generated for " + filename[:-4])
