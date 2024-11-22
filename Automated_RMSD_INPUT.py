@@ -5,6 +5,7 @@ import shutil
 import re
 import numpy as np
 import glob
+import sys
 
 # This script is intended to be use after CREST calculation.
 # The idea is to prune crest_conformers by using invariant RMSD with a threshold set to 0.5. https://github.com/RMeli/spyrmsd
@@ -68,6 +69,10 @@ with open('../parameters.txt', 'r') as parameters:
         ref_freq = ''
     else:
         ref_freq = int(ref_freq.group(1))
+        if ref_freq >= 0:
+            print("The structure that was provided is not a transition state. Please provide one.")
+            sys.exit()
+    
     node = re.search(r'Excluding nodes (.+)', file_content)
     node = node.group(1)
     if node == 'none' or node == 'None':
@@ -100,12 +105,6 @@ def write_coordinates(file_path, header, atoms):
         for atom in atoms:
             file.write(f"{atom[0]:<3} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
 
-def get_molecule_atoms(prompt):
-    atoms = input(prompt).split()
-    return [int(atom) - 1 for atom in atoms]
-
-def get_atom(prompt):
-    return int(input(prompt)) - 1
 
 def process_file(file_path):
     base_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -170,20 +169,12 @@ with open('CrestAnalysis.txt', 'r') as readfile:
     last_line_2 = lines[-2].rstrip()
 
 if ' CREST terminated normally.' in last_line:
-    if ref_freq:
-        os.mkdir('./TS-CREST')
-        shutil.copy('crest_conformers.xyz', './TS-CREST/crest_conformers.xyz') 
-        with open('../log.txt', 'a') as log:
-            log.write('CREST completed\n')
+    os.mkdir('./TS-CREST')
+    shutil.copy('crest_conformers.xyz', './TS-CREST/crest_conformers.xyz') 
+    with open('../log.txt', 'a') as log:
+        log.write('CREST completed\n')
 
-        os.chdir('./TS-CREST')
-    else:
-        os.mkdir('./Geo-CREST')
-        shutil.copy('crest_conformers.xyz', './Geo-CREST/crest_conformers.xyz') 
-        with open('../log.txt', 'a') as log:
-            log.write('CREST completed\n')
-
-        os.chdir('./Geo-CREST')
+    os.chdir('./TS-CREST')
 
     for file_path in glob.glob('./*.xyz'):
         print(f"Processing file: {file_path}")
@@ -204,22 +195,13 @@ if ' CREST terminated normally.' in last_line:
         fout = open(f"{base_name}_{experience_number}-{match}.inp", "w+")
         with open(listn[0], 'r') as fp:
             text = fp.read().splitlines(True)[2:]
-            if ref_freq:
-                fout.writelines("%nprocshared=12\n")
-                fout.writelines("%mem=5GB\n")
-                fout.writelines(f"# opt=(calcfc,ts,noeigen) freq {functional} {base_1} {dispersion}\n")
-                fout.writelines("\n")
-                fout.writelines(f"H2\n")
-                fout.writelines(f"\n")
-                fout.writelines(f"{charge} {multiplicity}\n")
-            else:
-                fout.writelines("%nprocshared=12\n")
-                fout.writelines("%mem=5GB\n")
-                fout.writelines(f"# opt {functional} {base_1} {dispersion} \n")
-                fout.writelines("\n")
-                fout.writelines(f"H2\n")
-                fout.writelines(f"\n")
-                fout.writelines(f"{charge} {multiplicity}\n")
+            fout.writelines("%nprocshared=12\n")
+            fout.writelines("%mem=5GB\n")
+            fout.writelines(f"# opt=(calcfc,ts,noeigen) freq {functional} {base_1} {dispersion}\n")
+            fout.writelines("\n")
+            fout.writelines(f"H2\n")
+            fout.writelines(f"\n")
+            fout.writelines(f"{charge} {multiplicity}\n")
             for item in text:
                 fout.writelines(''.join(map(str, item)))
             fout.writelines('\n')
