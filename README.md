@@ -1,1 +1,4 @@
-# FASTCAR
+# FASTCAR_Adapted
+This code serves to analyse reactions of structures with flexible side chains. By using CREST to study the transition state structure (TS), all different kind of conformers can be studied. Our adaptation of the FASTCAR method automatically performs the CREST method and subsequently optimizes the corresponding transition state structures. To make sure these don't correspond to the same structure, the energy of the TS is analyzed. If two TS have a similar energy, the rotational constants will be evaluated to check whether the found TS are indeed the same structures. If so, these TS's are discarted. Afterwards the IRC of the structure is calculated. Then the complex and product structures are optimized and depending on the settings in the parameters.txt file the energies are extrapolated to an infinite basis set or not. Finally, the results are summarized in the adapted_FASTCAR_results.xlsx file, where the Boltzmann distribution is also used to determine the prevalence of each reaction. 
+# Startgeom.out
+The startgeom.out contains
