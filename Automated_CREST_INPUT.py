@@ -125,6 +125,17 @@ with open('parameters.txt', 'r') as parameters:
         print('Unable to find CREST solvent information in the parameters file.')
         sys.exit()
 
+    NCI=re.search(r'NCI(.+)', file_content)
+
+    if NCI:
+        NCI=NCI.group(1).strip()
+        if NCI.lower()=="none":
+            NCI=""
+        else:
+            pass
+    else:
+        print('Unable to find NCI information in the parameters file.')
+        sys.exit()
     
 
 #######################################################################################################################################################################
@@ -161,10 +172,8 @@ with open('parameters.txt', 'r') as parameters:
         sys.exit()   
 
 # base
-    base_1 =  re.search(r'First base(.+)', file_content)#mod FG 7/02/24: '=' removed
-    base_2 = re.search(r'Unique base(.+)', file_content)#mod FG 7/02/24: '=' removed
-
-    if base_1 or base_2:
+    basis =  re.search(r'Basis(.+)', file_content)#mod FG 7/02/24: '=' removed
+    if basis:
         pass
     else:
         print('Unable to find basis set information in the parameters file.')
@@ -244,8 +253,8 @@ with open('script_CREST.sub', 'w') as file:
     file.write(f'module load xtb/6.6.1-gfbf-2023a\n')
     file.write(f'module load CREST/2.12-gfbf-2023a\n')
     file.write(f'xtb struc.xyz --opt extreme --gfn 2 --input constraints.inp > xtb.out\n')
-    file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg -cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')	
-    file.write(f'crest struc.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} -cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
+    file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')	
+    #file.write(f'crest struc.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
     file.write(f'crest coord -cregen crest_conformers.xyz -ewin 30\n')
     #file.write(f'cp ../Automated_RMSD_INPUT.py ./\n')
     file.write(f'./Automated_RMSD_INPUT.py\n')
@@ -257,6 +266,7 @@ os.mkdir('CREST')
 shutil.move('struc.xyz', 'CREST/struc.xyz')
 shutil.move('parameters.txt', 'CREST/parameters.txt')
 shutil.move('script_CREST.sub', 'CREST/script_CREST.sub')
+shutil.move('constraints.inp', 'CREST/constraints.inp')
 shutil.move('Automated_RMSD_INPUT.py', 'CREST/Automated_RMSD_INPUT.py')
 
 # Launch calculation
