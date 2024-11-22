@@ -12,7 +12,7 @@ CREST solvent --> indicate the CREST solvent
 RMSD threshold --> classically equal to 0.5
 Functional --> used functional for Gaussian optimization
 
-Unique base --> basis set for Gaussian optimization
+Basis --> basis set for Gaussian optimization. If given the keyword cbs (case-insensitive) the optimizations will be run with the cc-pVDZ basis set and the energies at cc-pVTZ and cc-pVQZ.
 
 DFT solvent --> indicate solvent if necessary
 
