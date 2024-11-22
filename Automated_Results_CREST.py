@@ -89,6 +89,6 @@ df['Percentage'] = df['Pi Value'] / pi_sum
 
 df['Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy'] - df['Complex Energy']) * 1000 * 4.184 / (8.314 * 298.15))
 
-df.to_excel('extracted_data_with_additional_columns.xlsx', index=False)
+df.to_excel('FASTCAR_results.xlsx', index=False)
 
-print("Data extraction complete. The results are saved in 'extracted_data_with_additional_columns.xlsx'.")
+print("Data extraction complete. The results are saved in 'FASTCAR_results.xlsx'.")
