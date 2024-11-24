@@ -33,28 +33,23 @@ with open('../parameters.txt', 'r') as parameters:
     experience_number = experience_number.group(1)
 
     functional = re.search(r'Functional (.+)', file_content)
-    functional = functional.group(1)
+    functional = functional.group(1).strip()
 
-    base_1 =  re.search(r'First base (.+)', file_content)
-    if base_1:
-        base_1 = base_1.group(1)
-        base_2 = re.search(r'Second base (.+)', file_content)
-        base_2 = base_2.group(1)
-    else:
-        base_1 = re.search(r'Unique base (.+)', file_content)
-        base_1 = base_1.group(1)
-        base_2 = base_1
+    basis_1 =  re.search(r'Basis (.+)', file_content)
+    basis_1 = basis_1.group(1).strip()
+    if basis_1.lower()=="cbs":
+        basis_1="cc-pvdz"
 
     pattern = re.compile('[\W_]+')
     base_name = pattern.sub('', base_1)
 
     dispersion = re.search(r'Dispersion (.+)', file_content)
-    dispersion = dispersion.group(1)
+    dispersion = dispersion.group(1).strip()
     if dispersion == 'none' or dispersion == 'None':
         dispersion = ''
 
     solvent = re.search(r'DFT solvent (.+)', file_content)
-    solvent = solvent.group(1)
+    solvent = solvent.group(1).strip()
     if solvent == 'none' or solvent == 'None':
         solvent = ''
 
