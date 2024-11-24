@@ -38,10 +38,10 @@ with open(file_path,'r') as parameters:
     multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
     multiplicity = multiplicity.group(1)
 
-    size_molecule=re.search(r'size_molecule\s*=\s*(\d+)', file_content)
-    if size_molecule:
-        size_molecule=size_molecule.group(1)
-        size_molecule=int(size_molecule)
+    size_molecule_match = re.search(r'size_molecule\s*=\s*(\d+)', file_content)
+    if size_molecule_match:
+        size_molecule = int(size_molecule_match.group(1))
+
 #Part that compiles and checks if the imaginary frequency lies within the #expected range and if we have the number of expected nimag 
 
 def compile_frequencies(lines):
