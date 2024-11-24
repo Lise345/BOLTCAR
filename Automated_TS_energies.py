@@ -20,10 +20,10 @@ with open(file_path,'r') as parameters:
     file_content = parameters.read()
     
     functional = re.search(r'Functional (.+)', file_content)
-    functional = functional.group(1)
+    functional = functional.group(1).strip()
 
     basis_in= re.search(r'Basis (.+)', file_content)
-    basis_in= basis.group(1)
+    basis_in= basis.group(1).strip()
     if basis_in.lower()=='cbs':
         basis_2='cc-pvtz'
 	basis_3='cc-pvqz'
@@ -32,12 +32,12 @@ with open(file_path,'r') as parameters:
 	sys.exit()
 
     dispersion = re.search(r'Dispersion (.+)', file_content)
-    dispersion = dispersion.group(1)
+    dispersion = dispersion.group(1).strip()
     if dispersion == 'none' or dispersion == 'None':
         dispersion = ''
 
     solvent = re.search(r'DFT solvent (.+)', file_content)
-    solvent = solvent.group(1)
+    solvent = solvent.group(1).strip()
     if solvent == 'none' or solvent == 'None':
         solvent = ''
 
