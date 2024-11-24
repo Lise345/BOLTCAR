@@ -192,7 +192,7 @@ if ' CREST terminated normally.' in last_line:
             text = fp.read().splitlines(True)[2:]
             fout.writelines("%nprocshared=12\n")
             fout.writelines("%mem=5GB\n")
-            fout.writelines(f"# opt=(calcfc,ts,noeigen) freq {functional} {base_1} {dispersion}\n")
+            fout.writelines(f"# opt=(calcfc,ts,noeigen) freq {functional} {basis_1} {dispersion} {solvent}\n")
             fout.writelines("\n")
             fout.writelines(f"H2\n")
             fout.writelines(f"\n")
