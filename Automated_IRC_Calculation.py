@@ -16,19 +16,19 @@ with open(file_path,'r') as parameters:
     functional = functional.group(1)
 
     basis_in= re.search(r'Basis (.+)', file_content)
-    basis_in= basis.group(1)
-    if basis_in.lower()=='cbs':
+    basis_in= basis_in.group(1)
+    if basis_in.strip().lower()=='cbs':
         basis='cc-pvdz'
     else:
         basis=basis_in
 
     dispersion = re.search(r'Dispersion (.+)', file_content)
-    dispersion = dispersion.group(1)
+    dispersion = dispersion.group(1).strip()
     if dispersion == 'none' or dispersion == 'None':
         dispersion = ''
 
     solvent = re.search(r'DFT solvent (.+)', file_content)
-    solvent = solvent.group(1)
+    solvent = solvent.group(1).strip()
     if solvent == 'none' or solvent == 'None':
         solvent = ''
 
@@ -38,6 +38,10 @@ with open(file_path,'r') as parameters:
     multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
     multiplicity = multiplicity.group(1)
 
+    size_molecule=re.search(r'size_molecule\s*=\s*(\d+)', file_content)
+    if size_molecule:
+        size_molecule=size_molecule.group(1)
+        size_molecule=int(size_molecule)
 #Part that compiles and checks if the imaginary frequency lies within the #expected range and if we have the number of expected nimag 
 
 def compile_frequencies(lines):
@@ -100,9 +104,6 @@ if len(incorrectTS)!=0 or len(errorterm)!=0:
         sys.exit()
 
 #Convert files to their xyz
-
-size_molecule_input=input("What is the size of your molecule? ")
-size_molecule=int(size_molecule_input)
     
 def lastgeometry(filename):
     with open(filename, "r") as readfile:
