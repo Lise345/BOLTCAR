@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Aug 16 13:27:16 2024
+
+@author: killi
+"""
 import os
 import sys
 import subprocess
@@ -7,42 +16,25 @@ import numpy as np
 import glob
 import pandas as pd
 
-#For further calculations the various parameters are exported from the parameters.txt file
-file_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "parameters.txt")
-with open(file_path,'r') as parameters:
-    file_content = parameters.read()
-    
-    functional = re.search(r'Functional (.+)', file_content)
-    functional = functional.group(1)
-
-    basis_in= re.search(r'Basis (.+)', file_content)
-    basis_in= basis_in.group(1)
-    if basis_in.strip().lower()=='cbs':
-        basis='cc-pvdz'
-    else:
-        basis=basis_in
-
-    dispersion = re.search(r'Dispersion (.+)', file_content)
-    dispersion = dispersion.group(1).strip()
-    if dispersion == 'none' or dispersion == 'None':
-        dispersion = ''
-
-    solvent = re.search(r'DFT solvent (.+)', file_content)
-    solvent = solvent.group(1).strip()
-    if solvent == 'none' or solvent == 'None':
-        solvent = ''
-
-    charge = re.search(r'Charge (-?\d+)', file_content)
-    charge = charge.group(1)
-
-    multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
-    multiplicity = multiplicity.group(1)
-
-    size_molecule_match = re.search(r'size_molecule\s*=\s*(\d+)', file_content)
-    if size_molecule_match:
-        size_molecule = int(size_molecule_match.group(1))
-
 #Part that compiles and checks if the imaginary frequency lies within the #expected range and if we have the number of expected nimag 
+
+with open('./parameters.txt', 'r') as parameters:
+    file_content = parameters.read()
+
+    size_molecule = re.search(r'size_molecule (.+)', file_content)
+    size_molecule = size_molecule.group(1)
+
+    RMSD_threshold = re.search(r'RMSD threshold (.+)', file_content)
+    RMSD_threshold = RMSD_threshold.group(1)
+
+    Energy_threshold = re.search(r'Energy threshold (.+)', file_content)
+    Energy_threshold = Energy_threshold.group(1)
+
+    Energy_window = re.search(r'Energy window (.+)', file_content)
+    Energy_window = Energy_window.group(1)
+
+    B_threshold = re.search(r'B_threshold (.+)', file_content)
+    B_threshold = B_threshold.group(1)
 
 def compile_frequencies(lines):
     frequencies=[]
@@ -97,13 +89,10 @@ print(incorrectTS)
 print("The error TS are")
 print(errorterm)
 
-if len(incorrectTS)!=0 or len(errorterm)!=0:
-    answer=input("The opt+freq of the CREST conformers have led to some errors, do you wish to continue (yes or no)? ")
-    if answer.lower()=='no':
-        print("Exiting the program...")
-        sys.exit()
+
 
 #Convert files to their xyz
+
     
 def lastgeometry(filename):
     with open(filename, "r") as readfile:
@@ -171,11 +160,7 @@ def convert_gjf_to_xyz(filename):
 for file in correctTS:
     convert_gjf_to_xyz(file)
         
-#Part that check if structures converged
-RMSD_threshold=0.6
-Energy_threshold=0.05 #in kcal
-Energy_window=10
-B_threshold=2 #in percent
+
 
 def read_coordinates(file_path):
     with open(file_path, 'r') as file:
@@ -200,7 +185,27 @@ def write_coordinates(file_path, header, atoms):
         for atom in atoms:
             file.write(f"{atom[0]:<3} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
 
-def rmsdcleaner(filelist):
+def get_molecule_atoms(prompt):
+    atoms = input(prompt).split()
+    return [int(atom) - 1 for atom in atoms]
+
+def get_atom(prompt):
+    return int(input(prompt)) - 1
+
+def XYZspliter():
+    with open('crest_conformers.xyz', 'r') as rfile:
+        lines = rfile.readlines()
+
+    natoms = int(lines[0])
+    ngeoms = len(lines) // (natoms + 2)
+
+    for j in range(ngeoms):
+        outname = f"xyzfilenum{j+1:04d}.xyz"
+        with open(outname, "w") as ow:
+            ow.write(str(natoms) + "\n \n")
+            ow.writelines(lines[(j * (natoms + 2) + 2):((j + 1) * (natoms + 2))])
+
+def xyzlistcleaner(filelist):
     print("RMSD cleaning in progress...")
     print("Total number of calculations="+str(len(filelist))) 
     toremovefromlist = []
@@ -364,7 +369,7 @@ def cleaner(correctTS):
     
     #print("xyzconverged is ",xyzconverged)
     
-    #toremove=rmsdcleaner(xyzconverged)
+    #toremove=xyzlistcleaner(xyzconverged)
 
     #print(toremove)
 
@@ -414,12 +419,12 @@ def IRC_inputgenerator(xyzfile, filename, direction):
         ip.writelines("%nprocshared=12\n")
         ip.writelines("%mem=12GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines(f"# irc=({direction},calcfc,maxpoints=100,recalc=3) {functional} {basis} {dispersion} {solvent}\n")
+        ip.writelines("# irc=("+direction+",calcfc,maxpoints=100,recalc=3) m062x cc-pvdz empiricaldispersion=gd3\n")
         ip.writelines("\n")
         Title=filename+" "+"IRC"+direction+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines(f"{charge} {multiplicity}\n")
+        ip.writelines("0 1\n")
         
         for atom in lines[2:]:
             ip.writelines(atom)
