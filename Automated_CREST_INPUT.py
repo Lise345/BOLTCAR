@@ -263,11 +263,11 @@ with open('script_CREST.sub', 'w') as file:
 
 # Construction of CREST folder
 os.mkdir('CREST')
-shutil.move('struc.xyz', 'CREST/struc.xyz')
-shutil.move('parameters.txt', 'CREST/parameters.txt')
-shutil.move('script_CREST.sub', 'CREST/script_CREST.sub')
-shutil.move('constraints.inp', 'CREST/constraints.inp')
-shutil.move('Automated_RMSD_INPUT.py', 'CREST/Automated_RMSD_INPUT.py')
+shutil.copy('struc.xyz', 'CREST/struc.xyz')
+shutil.copy('parameters.txt', 'CREST/parameters.txt')
+shutil.copy('script_CREST.sub', 'CREST/script_CREST.sub')
+shutil.copy('Automated_RMSD_INPUT.py', 'CREST/Automated_RMSD_INPUT.py')
+shutil.copy('constraints.inp', 'CREST/constraints.inp')
 
 # Launch calculation
 os.chdir('CREST')
