@@ -41,7 +41,7 @@ with open('../parameters.txt', 'r') as parameters:
         basis_1="cc-pvdz"
 
     pattern = re.compile('[\W_]+')
-    base_name = pattern.sub('', base_1)
+    base_name = pattern.sub('', basis_1)
 
     dispersion = re.search(r'Dispersion (.+)', file_content)
     dispersion = dispersion.group(1).strip()
@@ -182,12 +182,15 @@ if ' CREST terminated normally.' in last_line:
     ordxyzlist = sorted(xyzlist)
 
     n = 1
+    MAX_JOBS = 10
     listn = ordxyzlist[:]
     print(listn)
+    
+    inp_file_job_ids = []
 
-    while len(listn) > 0:
+    while listn:
         match = re.search(r'\d+', listn[0]).group()
-        fout = open(f"{base_name}_{experience_number}-{match}.inp", "w+")
+        fout = open(f"input_{experience_number}-{match}.inp", "w+")
         with open(listn[0], 'r') as fp:
             text = fp.read().splitlines(True)[2:]
             fout.writelines("%nprocshared=12\n")
@@ -216,15 +219,64 @@ if ' CREST terminated normally.' in last_line:
             gsub.write(f'#SBATCH --output={base_name}_{experience_number}-{match}.logfile\n')
             gsub.write('#SBATCH --time=05:00:00\n')
             gsub.write('\n')
-            gsub.write('#Loading modules\n')
-            gsub.write('module load intel/2023a\n')
-            gsub.write('module load AMS/2024.102-iimpi-2023a-intelmpi\n')
+            gsub.write('# Loading modules\n')
+            gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
             gsub.write('\n')
+            gsub.write('# Setting up Gaussian environment\n')
+            gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')  # Temporary directory for Gaussian scratch files
+            gsub.write('mkdir -p $GAUSS_SCRDIR\n')
             gsub.write('#Launching calculation\n')
             gsub.write('export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH\n')
-            gsub.write(f'sgx16 {base_name}_{experience_number}-{match}.inp 5 \n')
+            gsub.write('dos2unix input_{experience_number}-{match}.inp\n')
+            gsub.write(f'g16 < input_{experience_number}-{match}.inp > {base_name}_{experience_number}-{match}.log\n')
             gsub.write('\n')
 
-        os.system(f"sbatch {base_name}_{experience_number}-{match}g16.sub")
+        #dos2unix {base_name}_{experience_number}-{match}.sub
 
-        n += 1
+        sbatch_command = f"sbatch {base_name}_{experience_number}-{match}g16.sub"
+        
+        result = subprocess.run(
+            sbatch_command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+    
+        if result.returncode == 0:
+        # Extract the job ID from the sbatch output
+            job_id_match = re.search(r'(\d+)', result.stdout)
+            if job_id_match:
+                job_id = job_id_match.group(1)
+                inp_file_job_ids.append(job_id)  # Collect job IDs for inp_file jobs
+                n += 1  # Increment the counter
+                print(f"Submitted job {n}/{MAX_JOBS} for file")
+            else:
+                print(f"Failed to extract job ID for {sbatch_command}. Output: {result.stdout}")
+        else:
+            print(f"Failed to submit job for {sbatch_command}: {result.stderr}")
+            
+if inp_file_job_ids:
+    dependency_str = ":".join(inp_file_job_ids)
+    rootdir = '/scratch/brussel/105/vsc10536/lise/17_Baproeven/Killian'
+    extractor_script = os.path.join(rootdir,'FASTCAR/C1_C_exo_v2/2_IRC_calculator.sub')
+
+    if not os.path.exists(extractor_script):
+        raise FileNotFoundError(f"Extractor script not found: {extractor_script}")
+
+    dependency_command = [
+        "sbatch",
+        f"--dependency=afterok:{dependency_str}",
+        extractor_script
+    ]
+
+    result = subprocess.run(dependency_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    if result.returncode == 0:
+        print(f"Extractor job submitted successfully: {result.stdout}")
+    else:
+        print(f"Failed to submit extractor job: {result.stderr}")
+else:
+    print("No jobs were submitted, skipping dependency job submission.")
+        
+
+       
