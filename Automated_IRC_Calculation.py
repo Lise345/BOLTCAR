@@ -22,19 +22,19 @@ with open('./parameters.txt', 'r') as parameters:
     file_content = parameters.read()
 
     size_molecule = re.search(r'size_molecule (.+)', file_content)
-    size_molecule = size_molecule.group(1)
+    size_molecule = int(size_molecule.group(1))  # Convert to integer
 
     RMSD_threshold = re.search(r'RMSD threshold (.+)', file_content)
-    RMSD_threshold = RMSD_threshold.group(1)
+    RMSD_threshold = float(RMSD_threshold.group(1))  # Convert to float, as thresholds might be decimal
 
     Energy_threshold = re.search(r'Energy threshold (.+)', file_content)
-    Energy_threshold = Energy_threshold.group(1)
+    Energy_threshold = float(Energy_threshold.group(1))  # Convert to float
 
     Energy_window = re.search(r'Energy window (.+)', file_content)
-    Energy_window = Energy_window.group(1)
+    Energy_window = float(Energy_window.group(1))  # Convert to float
 
     B_threshold = re.search(r'B_threshold (.+)', file_content)
-    B_threshold = B_threshold.group(1)
+    B_threshold = float(B_threshold.group(1))  # Convert to float
 
 def compile_frequencies(lines):
     frequencies=[]
