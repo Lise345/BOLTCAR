@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
-
-
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Aug 16 13:27:16 2024
+Created on Tue Nov 26 14:16:23 2024
 
-@author: killi
+@author: lisevermeersch
 """
+
+
 import os
 import sys
 import subprocess
@@ -21,20 +21,26 @@ import pandas as pd
 with open('./parameters.txt', 'r') as parameters:
     file_content = parameters.read()
 
-    size_molecule = re.search(r'size_molecule (.+)', file_content)
-    size_molecule = int(size_molecule.group(1))  # Convert to integer
+    size_molecule = re.search(r'size_molecule\s*=\s*(\S+)', file_content)
+    size_molecule = int(size_molecule.group(1)) - 1  # Adjust for zero-based indexing
 
     RMSD_threshold = re.search(r'RMSD threshold (.+)', file_content)
-    RMSD_threshold = float(RMSD_threshold.group(1))  # Convert to float, as thresholds might be decimal
+    RMSD_threshold = float(RMSD_threshold.group(1))
 
     Energy_threshold = re.search(r'Energy threshold (.+)', file_content)
-    Energy_threshold = float(Energy_threshold.group(1))  # Convert to float
+    Energy_threshold = float(Energy_threshold.group(1))
 
     Energy_window = re.search(r'Energy window (.+)', file_content)
-    Energy_window = float(Energy_window.group(1))  # Convert to float
+    Energy_window = float(Energy_window.group(1))
 
     B_threshold = re.search(r'B_threshold (.+)', file_content)
-    B_threshold = float(B_threshold.group(1))  # Convert to float
+    B_threshold = float(B_threshold.group(1))
+
+    rootdir = re.search(r'rootdir (.+)', file_content)
+    rootdir = rootdir.group(1)
+
+    bin = re.search(r'bin (.+)', file_content)
+    bin = bin.group(1)
 
 def compile_frequencies(lines):
     frequencies=[]
@@ -433,6 +439,10 @@ def IRC_inputgenerator(xyzfile, filename, direction):
     return print("IRC input generated for " + xyzfile[:-4])
         
 def launcher(uplist):
+    inp_file_job_ids = []
+    
+    n = 1
+    
     for xyzfile in uplist:
         reduced_filename=xyzfile[:-4]+"_IRC"
         filename_forward=xyzfile[:-4]+"_IRCforward"+".gjf"
@@ -442,22 +452,70 @@ def launcher(uplist):
         
         with open(reduced_filename+".sub","w") as gsub:
             gsub.write('#!/bin/sh\n')
-            gsub.write(f'#SBATCH --job-name='+reduced_filename+'\n')
+            gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
             gsub.write('#SBATCH --ntasks=12\n')
-            gsub.write(f'#SBATCH --output='+reduced_filename+'.logfile\n')
-            gsub.write('#SBATCH --time=01:00:00\n')
+            gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
+            gsub.write('#SBATCH --time=10:00:00\n')
             gsub.write('\n')
-            gsub.write('#Loading modules\n')
-            gsub.write('module load intel/2023a\n')
-            gsub.write('module load AMS/2024.102-iimpi-2023a-intelmpi\n')
+            gsub.write('# Loading modules\n')
+            gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
             gsub.write('\n')
+            gsub.write('# Setting up Gaussian environment\n')
+            gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')  # Temporary directory for Gaussian scratch files
+            gsub.write('mkdir -p $GAUSS_SCRDIR\n')
             gsub.write('#Launching calculation\n')
-            gsub.write('export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH\n')
-            gsub.write(f'sgx16 '+filename_forward+' 24 \n')
-            gsub.write(f'sgx16 '+filename_reverse+' 24 \n')
+            gsub.write('export PATH={bin}:$PATH\n')
+            gsub.write('dos2unix {filename_forward}\n')
+            gsub.write('dos2unix {filename_reverse}\n')
+            gsub.write(f'g16 < {filename_forward} > {filename_forward}.log\n')
+            gsub.write(f'g16 < {filename_reverse} > {filename_reverse}.log\n')
             gsub.write('\n')
-        os.system(f"sbatch "+reduced_filename+".sub")
-    print("Launch complete...")
+        
+        sbatch_command = f"sbatch {reduced_filename}.sub"
+        
+        
+        result = subprocess.run(
+            sbatch_command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
+        )
+        
+        if result.returncode == 0:
+        # Extract the job ID from the sbatch output
+            job_id_match = re.search(r'(\d+)', result.stdout)
+            if job_id_match:
+                job_id = job_id_match.group(1)
+                inp_file_job_ids.append(job_id)  # Collect job IDs for inp_file jobs
+                n += 1  # Increment the counter
+                print(f"Submitted job {n}")
+            else:
+                print(f"Failed to extract job ID for {sbatch_command}. Output: {result.stdout}")
+        else:
+            print(f"Failed to submit job for {sbatch_command}: {result.stderr}")
+    
+    if inp_file_job_ids:
+        dependency_str = ":".join(inp_file_job_ids)
+        extractor_script = os.path.join(rootdir,'/3_StationaryPoints_calculator.sub')
+
+        if not os.path.exists(extractor_script):
+            raise FileNotFoundError(f"Extractor script not found: {extractor_script}")
+
+        dependency_command = [
+            "sbatch",
+            f"--dependency=afterany:{dependency_str}",
+            extractor_script
+        ]
+
+        result = subprocess.run(dependency_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        if result.returncode == 0:
+            print(f"Extractor job submitted successfully: {result.stdout}")
+        else:
+            print(f"Failed to submit extractor job: {result.stderr}")
+    else:
+        print("No jobs were submitted, skipping dependency job submission.")
+    
 
 launcher(IRClist)
 
