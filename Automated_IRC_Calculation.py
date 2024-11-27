@@ -113,7 +113,7 @@ def lastgeometry(filename):
         start=last_index+5
         i=start
         coord=[]
-        while (i-start)<size_molecule:
+        while (i-start)-1<size_molecule:
             strippedline=lines[i].split()
             number_list = [float(num) for num in strippedline]
             coord.append(number_list)
