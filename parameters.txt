@@ -42,5 +42,5 @@ CC1_in = "1 9"
 ---------------------Used path--------------------
 --------------------------------------------------
 
-rootdir '/scratch/brussel/105/vsc10536/lise/17_Baproeven/Killian/FASTCAR/C1_C_exo_v2'
+rootdir /rhea/scratch/brussel/105/vsc10536/lise/17_Baproeven/Killian/FASTCAR/C1_C_exo_v2
 bin /vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/
