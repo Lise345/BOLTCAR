@@ -37,10 +37,12 @@ with open('./parameters.txt', 'r') as parameters:
     B_threshold = float(B_threshold.group(1))
 
     rootdir = re.search(r'rootdir (.+)', file_content)
-    rootdir = rootdir.group(1)
+    rootdir = rootdir.group(1).strip().strip("'\"")
 
-    bin = re.search(r'bin (.+)', file_content)
-    bin = bin.group(1)
+    binfolder = re.search(r'bin (.+)', file_content)
+    binfolder = binfolder.group(1)
+
+
 
 def compile_frequencies(lines):
     frequencies=[]
@@ -438,7 +440,7 @@ def IRC_inputgenerator(xyzfile, filename, direction):
         ip.close()
     return print("IRC input generated for " + xyzfile[:-4])
         
-def launcher(uplist):
+def launcher(uplist,rootdir,binfolder):
     inp_file_job_ids = []
     
     n = 1
@@ -464,13 +466,14 @@ def launcher(uplist):
             gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')  # Temporary directory for Gaussian scratch files
             gsub.write('mkdir -p $GAUSS_SCRDIR\n')
             gsub.write('#Launching calculation\n')
-            gsub.write('export PATH={bin}:$PATH\n')
+            gsub.write('export PATH={binfolder}:$PATH\n')
             gsub.write('dos2unix {filename_forward}\n')
             gsub.write('dos2unix {filename_reverse}\n')
             gsub.write(f'g16 < {filename_forward} > {filename_forward}.log\n')
             gsub.write(f'g16 < {filename_reverse} > {filename_reverse}.log\n')
             gsub.write('\n')
-        
+
+    
         sbatch_command = f"sbatch {reduced_filename}.sub"
         
         
@@ -497,7 +500,7 @@ def launcher(uplist):
     
     if inp_file_job_ids:
         dependency_str = ":".join(inp_file_job_ids)
-        extractor_script = os.path.join(rootdir,'/3_StationaryPoints_calculator.sub')
+        extractor_script = os.path.join(rootdir,'3_StationaryPoints_calculator.sub')
 
         if not os.path.exists(extractor_script):
             raise FileNotFoundError(f"Extractor script not found: {extractor_script}")
@@ -517,7 +520,7 @@ def launcher(uplist):
         print("No jobs were submitted, skipping dependency job submission.")
     
 
-launcher(IRClist)
+launcher(IRClist,rootdir,binfolder)
 
 
     
