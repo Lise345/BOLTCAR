@@ -3,7 +3,7 @@ import math
 import sys
 import re
 
-with open('../parameters.txt', 'r') as parameters:
+with open('./parameters.txt', 'r') as parameters:
     file_content = parameters.read()
     
     functional = re.search(r'Functional (.+)', file_content)
