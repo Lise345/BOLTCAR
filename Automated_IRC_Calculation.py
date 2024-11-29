@@ -449,6 +449,8 @@ def launcher(uplist,rootdir,binfolder):
         reduced_filename=xyzfile[:-4]+"_IRC"
         filename_forward=xyzfile[:-4]+"_IRCforward"+".gjf"
         filename_reverse=xyzfile[:-4]+"_IRCreverse"+".gjf"
+        output_forward = filename_forward.replace(".gjf", ".log")
+        output_reverse = filename_reverse.replace(".gjf", ".log")
         IRC_inputgenerator(xyzfile,filename_forward,"forward")
         IRC_inputgenerator(xyzfile,filename_reverse,"reverse")
         
@@ -469,8 +471,9 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write('export PATH={binfolder}:$PATH\n')
             gsub.write('dos2unix {filename_forward}\n')
             gsub.write('dos2unix {filename_reverse}\n')
-            gsub.write(f'g16 < {filename_forward} > {filename_forward}.log\n')
-            gsub.write(f'g16 < {filename_reverse} > {filename_reverse}.log\n')
+            gsub.write(f'g16 < {filename_forward} > {output_forward} &\n')
+            gsub.write(f'g16 < {filename_reverse} > {output_reverse} &\n')
+            gsub.write('wait\n')
             gsub.write('\n')
 
     
