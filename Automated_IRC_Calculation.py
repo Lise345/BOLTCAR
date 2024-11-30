@@ -42,7 +42,29 @@ with open('./parameters.txt', 'r') as parameters:
     binfolder = re.search(r'bin (.+)', file_content)
     binfolder = binfolder.group(1)
 
+    #DFT parameters
+    basis_in= re.search(r'Basis (.+)', file_content)
+    basis_in= basis.group(1).strip()
+    if basis_in.lower()=='cbs':
+        basis_1='cc-pvdz'
+    else:
+        basis_1=basis_in
 
+    dispersion = re.search(r'Dispersion (.+)', file_content)
+    dispersion = dispersion.group(1).strip()
+    if dispersion == 'none' or dispersion == 'None':
+        dispersion = ''
+
+    solvent = re.search(r'DFT solvent (.+)', file_content)
+    solvent = solvent.group(1).strip()
+    if solvent == 'none' or solvent == 'None':
+        solvent = ''
+
+    charge = re.search(r'Charge (-?\d+)', file_content)
+    charge = charge.group(1)
+
+    multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
+    multiplicity = multiplicity.group(1)
 
 def compile_frequencies(lines):
     frequencies=[]
@@ -427,12 +449,12 @@ def IRC_inputgenerator(xyzfile, filename, direction):
         ip.writelines("%nprocshared=12\n")
         ip.writelines("%mem=12GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# irc=("+direction+",calcfc,maxpoints=100,recalc=3) m062x cc-pvdz empiricaldispersion=gd3\n")
+        ip.writelines(f"# irc=({direction},calcfc,maxpoints=100,recalc=3) {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename+" "+"IRC"+direction+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines("0 1\n")
+        ip.writelines(f"{charge} {multiplicity}\n")
         
         for atom in lines[2:]:
             ip.writelines(atom)
