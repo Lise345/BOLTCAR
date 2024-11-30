@@ -228,10 +228,5 @@ for file in os.listdir():
             else:
                 errorfiles.append(file)
 
-if len(errorfiles)!=0:
-    answer=input("The opt+freq of the CREST conformers have led to some errors, do you wish to continue (yes or no)? ")
-    if answer.lower()=='no':
-        print("Exiting the program...")
-        sys.exit()
 
 launcher(logfilelist)
