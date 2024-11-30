@@ -87,7 +87,7 @@ def SP_inputgenerator(xyzfile,filename):
         ip.writelines("%nprocshared=4\n")
         ip.writelines("%mem=4GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint \n")
+        ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVQZ_SP"+"\n"
         ip.writelines(Title)
