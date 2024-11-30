@@ -78,12 +78,12 @@ def SP_inputgenerator(xyzfile,filename):
         ip.writelines("%nprocshared=4\n")
         ip.writelines("%mem=4GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# opt=(calcfc,ts,noeigentest) freq cc-pvdz empiricaldispersion=gd3 m062x\n")
+        ip.writelines(f"# opt=(calcfc,ts,noeigentest) freq {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVTZ_SP"+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines("0 1\n")
+        ip.writelines(f"{charge} {multiplicity}\n")
         
         for atom in lines[2:]:
             ip.writelines(atom)
@@ -94,12 +94,12 @@ def SP_inputgenerator(xyzfile,filename):
         ip.writelines("%nprocshared=4\n")
         ip.writelines("%mem=4GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint \n")
+        ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVQT_SP"+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines("0 1\n")
+        ip.writelines(f"{charge} {multiplicity}\n")
         ip.writelines("\n")
         
 
@@ -108,12 +108,12 @@ def SP_inputgenerator(xyzfile,filename):
         ip.writelines("%nprocshared=4\n")
         ip.writelines("%mem=4GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint \n")
+        ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVQZ_SP"+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines("0 1\n")
+        ip.writelines(f"{charge} {multiplicity}\n")
         ip.writelines("\n")
         ip.close()
     return print("Input generated for " + filename[:-4])
@@ -195,7 +195,7 @@ def inputgenerator(geometry, filename):
         Title=filename[:-4]+" "+"optfreq"+"\n"
         ip.writelines(Title)
         ip.writelines("\n")
-        ip.writelines("0 1\n")
+        ip.writelines(f"{charge} {multiplicity}\n")
         
         for atom in geometry:
             atom_line=atom[1]+" "+atom[2]+" "+atom[3]+" "+atom[4]+"\n"
@@ -213,7 +213,7 @@ def inputgenerator(geometry, filename):
 	        Title=filename[:-4]+" "+"E_ccpvtz"+"\n"
 	        ip.writelines(Title)
 	        ip.writelines("\n")
-	        ip.writelines("0 1\n")
+	        ip.writelines(f"{charge} {multiplicity}\n")
 	        ip.writelines("\n")
 	        
 	        #Writing Link1 part for cc-pVQZ
@@ -226,7 +226,7 @@ def inputgenerator(geometry, filename):
 	        ip.writelines("\n")
 	        ip.writelines(Title)
 	        ip.writelines("\n")
-	        ip.writelines("0 1\n")
+	        ip.writelines(f"{charge} {multiplicity}\n")
 	        ip.writelines("\n")
 	        ip.close()
     return print("Input generated for " + filename[:-4])
@@ -408,6 +408,7 @@ for file in os.listdir():
 
 
 launcherstatp(logfilelist)
-launcherTS(listofTS)
+if basis_in.lower()=='cbs':
+	launcherTS(listofTS)
 launch_dependent_job()
 
