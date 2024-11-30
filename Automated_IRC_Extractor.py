@@ -23,6 +23,32 @@ with open('./parameters.txt', 'r') as parameters:
     binfolder = re.search(r'bin (.+)', file_content)
     binfolder = binfolder.group(1)
 
+    #DFT parameters
+    basis_in= re.search(r'Basis (.+)', file_content)
+    basis_in= basis.group(1).strip()
+    if basis_in.lower()=='cbs':
+        basis_1='cc-pvdz'
+	basis_2='cc-pvtz'
+	basis_3='cc-pvqz'
+    else:
+        basis_1=basis_in
+
+    dispersion = re.search(r'Dispersion (.+)', file_content)
+    dispersion = dispersion.group(1).strip()
+    if dispersion == 'none' or dispersion == 'None':
+        dispersion = ''
+
+    solvent = re.search(r'DFT solvent (.+)', file_content)
+    solvent = solvent.group(1).strip()
+    if solvent == 'none' or solvent == 'None':
+        solvent = ''
+
+    charge = re.search(r'Charge (-?\d+)', file_content)
+    charge = charge.group(1)
+
+    multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
+    multiplicity = multiplicity.group(1)
+
 CC1_out=CC1_in
 CC1=CC1_in
 
@@ -164,7 +190,7 @@ def inputgenerator(geometry, filename):
         ip.writelines("%nprocshared=8\n")
         ip.writelines("%mem=16GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# opt=calcfc freq m062x cc-pvdz empiricaldispersion=gd3\n")
+        ip.writelines(f"# opt=calcfc freq {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"optfreq"+"\n"
         ip.writelines(Title)
@@ -177,31 +203,32 @@ def inputgenerator(geometry, filename):
         ip.writelines("\n")
         
         #Writing Link1 part for cc-pVTZ
-        ip.writelines("--Link1--\n")
-        ip.writelines("%nprocshared=4\n")
-        ip.writelines("%mem=4GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint\n")
-        ip.writelines("\n")
-        Title=filename[:-4]+" "+"E_ccpvtz"+"\n"
-        ip.writelines(Title)
-        ip.writelines("\n")
-        ip.writelines("0 1\n")
-        ip.writelines("\n")
-        
-        #Writing Link1 part for cc-pVQZ
-        ip.writelines("--Link1--\n")
-        ip.writelines("%nprocshared=8\n")
-        ip.writelines("%mem=4GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines("# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint\n")
-        Title=filename[:-4]+" "+"E_ccpvqz"+"\n"
-        ip.writelines("\n")
-        ip.writelines(Title)
-        ip.writelines("\n")
-        ip.writelines("0 1\n")
-        ip.writelines("\n")
-        ip.close()
+	if basis_in.lower()=='cbs':
+	        ip.writelines("--Link1--\n")
+	        ip.writelines("%nprocshared=4\n")
+	        ip.writelines("%mem=4GB\n")
+	        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
+	        ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint\n")
+	        ip.writelines("\n")
+	        Title=filename[:-4]+" "+"E_ccpvtz"+"\n"
+	        ip.writelines(Title)
+	        ip.writelines("\n")
+	        ip.writelines("0 1\n")
+	        ip.writelines("\n")
+	        
+	        #Writing Link1 part for cc-pVQZ
+	        ip.writelines("--Link1--\n")
+	        ip.writelines("%nprocshared=8\n")
+	        ip.writelines("%mem=4GB\n")
+	        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
+	        ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint\n")
+	        Title=filename[:-4]+" "+"E_ccpvqz"+"\n"
+	        ip.writelines("\n")
+	        ip.writelines(Title)
+	        ip.writelines("\n")
+	        ip.writelines("0 1\n")
+	        ip.writelines("\n")
+	        ip.close()
     return print("Input generated for " + filename[:-4])
 
 def atomwithfloats(atom):
