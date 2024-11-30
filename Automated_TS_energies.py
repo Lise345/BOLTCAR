@@ -23,7 +23,7 @@ with open(file_path,'r') as parameters:
     functional = functional.group(1).strip()
 
     basis_in= re.search(r'Basis (.+)', file_content)
-    basis_in= basis.group(1).strip()
+    basis_in= basis_in.group(1).strip()
     if basis_in.lower()=='cbs':
         basis_2='cc-pvtz'
 	basis_3='cc-pvqz'
