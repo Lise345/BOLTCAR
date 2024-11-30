@@ -44,7 +44,7 @@ with open('./parameters.txt', 'r') as parameters:
 
     #DFT parameters
     basis_in= re.search(r'Basis (.+)', file_content)
-    basis_in= basis.group(1).strip()
+    basis_in= basis_in.group(1).strip()
     if basis_in.lower()=='cbs':
         basis_1='cc-pvdz'
     else:
@@ -65,6 +65,17 @@ with open('./parameters.txt', 'r') as parameters:
 
     multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
     multiplicity = multiplicity.group(1)
+
+with open("../CrestAnalysis.txt", "r") as crest:
+    crestlines=crest.read()
+
+    nconformers=re.search(r"number of unique conformers for further calc\s+(\d+)", crestlines)
+    nconformers=nconformers.group(1)
+
+    crestconformers=[]
+    for i in range(1,int(nconformers)+1):
+        name="crestconformer-"+str(i)
+        crestconformers.append(name)
 
 def compile_frequencies(lines):
     frequencies=[]
@@ -208,32 +219,6 @@ def read_coordinates(file_path):
         if len(parts) == 4:
             atoms.append([parts[0], float(parts[1]), float(parts[2]), float(parts[3])])
     return lines[:start_index], atoms
-
-def write_coordinates(file_path, header, atoms):
-    with open(file_path, 'w') as file:
-        file.writelines(header)
-        for atom in atoms:
-            file.write(f"{atom[0]:<3} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
-
-def get_molecule_atoms(prompt):
-    atoms = input(prompt).split()
-    return [int(atom) - 1 for atom in atoms]
-
-def get_atom(prompt):
-    return int(input(prompt)) - 1
-
-def XYZspliter():
-    with open('crest_conformers.xyz', 'r') as rfile:
-        lines = rfile.readlines()
-
-    natoms = int(lines[0])
-    ngeoms = len(lines) // (natoms + 2)
-
-    for j in range(ngeoms):
-        outname = f"xyzfilenum{j+1:04d}.xyz"
-        with open(outname, "w") as ow:
-            ow.write(str(natoms) + "\n \n")
-            ow.writelines(lines[(j * (natoms + 2) + 2):((j + 1) * (natoms + 2))])
 
 def xyzlistcleaner(filelist):
     print("RMSD cleaning in progress...")
@@ -421,12 +406,15 @@ def cleaner(correctTS):
 
 IRClist=cleaner(correctTS)
 
-def save_to_excel(incorrectTS, correctTS, IRClist, filename="TS_analysis.xlsx"):
+def save_to_excel(incorrectTS, correctTS, IRClist, listfiles, crestconformers, errorterm, filename="TS_analysis.xlsx"):
     # Create a dictionary with lists to save
     data = {
+        "CREST TS":pd.Series(crestconformers),
+        "TS after optimization":pd.Series(listfiles),
         "Correct TS": pd.Series(correctTS),
+        "IRC List": pd.Series(IRClist),
         "Incorrect TS": pd.Series(incorrectTS),
-        "IRC List": pd.Series(IRClist)
+        "Error Termination": pd.Series(errorterm)
     }
 
     # Convert the dictionary into a DataFrame
@@ -436,7 +424,7 @@ def save_to_excel(incorrectTS, correctTS, IRClist, filename="TS_analysis.xlsx"):
     df.to_excel(filename, index=False, engine='openpyxl')
     print(f"Data successfully saved to {filename}")
 
-save_to_excel(incorrectTS, correctTS, IRClist)
+save_to_excel(incorrectTS, correctTS, IRClist, listfiles, crestconformers, errorterm)
 
 print("Number of IRC calculations: "+str(len(IRClist)))
 
