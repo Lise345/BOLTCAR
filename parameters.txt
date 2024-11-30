@@ -20,7 +20,6 @@ B_threshold 2
 --------------------------------------------------
 
 Functional  m062x
-Unique base  cc-pvdz
 Dispersion  empiricaldispersion=gd3
 Basis cbs
 DFT solvent  none
