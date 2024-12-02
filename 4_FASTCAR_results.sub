@@ -19,7 +19,7 @@ module load openpyxl/3.1.2-GCCcore-12.3.0
 cp Automated_Results_CREST.py ./CREST/TS-CREST/Automated_Results_CREST.py
 cd CREST/
 cd TS-CREST/
-chmod 777 Results_CREST.py
+chmod 777 Automated_Results_CREST.py
 python Automated_Results_CREST.py
 cp ./FASTCAR_results.xlsx ../../FASTCAR_results.xlsx
 cp ./TS_analysis.xlsx ../../TS_analysis.xlsx
