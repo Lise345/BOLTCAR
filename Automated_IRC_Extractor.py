@@ -404,6 +404,7 @@ for file in os.listdir():
             if "Normal termination" in lines[-1]:
                 logfilelist.append(file)
             else:
+                logfilelist.append(file)
                 errorfiles.append(file)
 
 
