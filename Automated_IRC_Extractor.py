@@ -278,7 +278,7 @@ def launcherstatp(logfilelist):
                     gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
                     gsub.write('#SBATCH --ntasks=12\n')
                     gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
-                    gsub.write('#SBATCH --time=10:00:00\n')
+                    gsub.write('#SBATCH --time=15:00:00\n')
                     gsub.write('\n')
                     gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
                     gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')
@@ -329,7 +329,7 @@ def launcherTS(xyzlist):
             gsub.write(f'#SBATCH --job-name='+filename[:-4]+'\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output='+filename[:-4]+'.logfile\n')
-            gsub.write('#SBATCH --time=10:00:00\n')
+            gsub.write('#SBATCH --time=15:00:00\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
