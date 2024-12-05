@@ -76,6 +76,12 @@ with open('../parameters.txt', 'r') as parameters:
     RMSD_threshold = re.search(r'RMSD threshold (.+)', file_content)
     RMSD_threshold = RMSD_threshold.group(1)
 
+    rootdir = re.search(r'rootdir (.+)', file_content)
+    rootdir = rootdir.group(1).strip().strip("'\"")
+
+    binfolder = re.search(r'bin (.+)', file_content)
+    binfolder = binfolder.group(1)
+
 
 def read_coordinates(file_path):
     with open(file_path, 'r') as file:
@@ -226,7 +232,7 @@ if ' CREST terminated normally.' in last_line:
             gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')  # Temporary directory for Gaussian scratch files
             gsub.write('mkdir -p $GAUSS_SCRDIR\n')
             gsub.write('#Launching calculation\n')
-            gsub.write('export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH\n')
+            gsub.write('export PATH={binfolder}:$PATH\n')
             gsub.write('dos2unix input_{experience_number}-{match}.inp\n')
             gsub.write(f'g16 < input_{experience_number}-{match}.inp > {base_name}_{experience_number}-{match}.log\n')
             gsub.write('\n')
@@ -258,8 +264,7 @@ if ' CREST terminated normally.' in last_line:
             
 if inp_file_job_ids:
     dependency_str = ":".join(inp_file_job_ids)
-    rootdir = '/scratch/brussel/105/vsc10536/lise/17_Baproeven/Killian'
-    extractor_script = os.path.join(rootdir,'FASTCAR/C1_C_exo_v2/2_IRC_calculator.sub')
+    extractor_script = os.path.join(rootdir,'2_IRC_calculator.sub')
 
     if not os.path.exists(extractor_script):
         raise FileNotFoundError(f"Extractor script not found: {extractor_script}")

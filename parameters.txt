@@ -26,6 +26,8 @@ DFT solvent  none
 Additional calculation  none
 Excluding nodes 01-06
 Energy of separate reagents -936.284718313083
+Charge 0
+Multiplicity 1
 
 --------------------------------------------------
 ---------------Geometry information---------------
@@ -42,5 +44,5 @@ CC1_in = "1 9"
 ---------------------Used path--------------------
 --------------------------------------------------
 
-rootdir /rhea/scratch/brussel/105/vsc10536/lise/17_Baproeven/Killian/FASTCAR/C1_C_exo_v2
+rootdir /rhea/scratch/brussel/105/vsc10536/lise/17_Baproeven/Killian/FASTCAR/BOLTCAR
 bin /vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/

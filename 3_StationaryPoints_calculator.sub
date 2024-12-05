@@ -17,7 +17,6 @@ module load openpyxl/3.1.2-GCCcore-12.3.0
 
 #Launching calculation
 cp Automated_IRC_Extractor.py ./CREST/TS-CREST/Automated_IRC_Extractor.py
-cp Automated_TS_Energies.py ./CREST/TS-CREST/Automated_TS_Energies.py
 cd CREST/
 cd TS-CREST/
 chmod 777 Automated_IRC_Extractor.py

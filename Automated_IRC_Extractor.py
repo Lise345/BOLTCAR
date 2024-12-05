@@ -6,6 +6,9 @@ import openpyxl
 
 with open('./parameters.txt', 'r') as parameters:
     file_content = parameters.read()
+    print("File content read by script:")
+    print(repr(file_content))  # Use repr() to reveal hidden characters like \n or spaces
+
 
     # Extract the size_molecule value
     size_molecule_match = re.search(r'size_molecule\s*=\s*(\d+)', file_content)
@@ -28,8 +31,8 @@ with open('./parameters.txt', 'r') as parameters:
     basis_in= basis_in.group(1).strip()
     if basis_in.lower()=='cbs':
         basis_1='cc-pvdz'
-	basis_2='cc-pvtz'
-	basis_3='cc-pvqz'
+        basis_2='cc-pvtz'
+        basis_3='cc-pvqz'
     else:
         basis_1=basis_in
 
@@ -44,7 +47,13 @@ with open('./parameters.txt', 'r') as parameters:
         solvent = ''
 
     charge = re.search(r'Charge (-?\d+)', file_content)
-    charge = charge.group(1)
+    if charge:
+        charge = charge.group(1)
+    else:
+        raise ValueError("Charge value not found in parameters file.")
+
+    functional = re.search(r'Functional (.+)', file_content)
+    functional = functional.group(1).strip()
 
     multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
     multiplicity = multiplicity.group(1)
@@ -75,8 +84,8 @@ def SP_inputgenerator(xyzfile,filename):
     with open(xyzfile, 'r') as file:
         lines = file.readlines()
     with open(filename, 'x') as ip:
-        ip.writelines("%nprocshared=4\n")
-        ip.writelines("%mem=4GB\n")
+        ip.writelines("%nprocshared=8\n")
+        ip.writelines("%mem=16GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# opt=(calcfc,ts,noeigentest) freq {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
@@ -91,8 +100,8 @@ def SP_inputgenerator(xyzfile,filename):
         
         #Writing Link1 part for cc-pVTZ
         ip.writelines("--Link1--\n")
-        ip.writelines("%nprocshared=4\n")
-        ip.writelines("%mem=4GB\n")
+        ip.writelines("%nprocshared=8\n")
+        ip.writelines("%mem=16GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
@@ -105,8 +114,8 @@ def SP_inputgenerator(xyzfile,filename):
 
 	    #Writing Link1 part for cc-pVQZ
         ip.writelines("--Link1--\n")
-        ip.writelines("%nprocshared=4\n")
-        ip.writelines("%mem=4GB\n")
+        ip.writelines("%nprocshared=8\n")
+        ip.writelines("%mem=16GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
@@ -203,10 +212,10 @@ def inputgenerator(geometry, filename):
         ip.writelines("\n")
         
         #Writing Link1 part for cc-pVTZ
-	if basis_in.lower()=='cbs':
+        if basis_in.lower()=='cbs':
 	        ip.writelines("--Link1--\n")
-	        ip.writelines("%nprocshared=4\n")
-	        ip.writelines("%mem=4GB\n")
+	        ip.writelines("%nprocshared=8\n")
+	        ip.writelines("%mem=16GB\n")
 	        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
 	        ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint\n")
 	        ip.writelines("\n")
@@ -219,7 +228,7 @@ def inputgenerator(geometry, filename):
 	        #Writing Link1 part for cc-pVQZ
 	        ip.writelines("--Link1--\n")
 	        ip.writelines("%nprocshared=8\n")
-	        ip.writelines("%mem=4GB\n")
+	        ip.writelines("%mem=16GB\n")
 	        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
 	        ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint\n")
 	        Title=filename[:-4]+" "+"E_ccpvqz"+"\n"
@@ -323,13 +332,14 @@ def launcherstatp(logfilelist):
 def launcherTS(xyzlist):
     for xyzfile in xyzlist:
         filename=xyzfile[:-4]+"_SP.gjf"
+        outputfilename=xyzfile[:-4]+"_SP.log"
         reduced_filename=filename[:-4]
         with open(reduced_filename+".sub","w") as gsub:
             gsub.write('#!/bin/sh\n')
             gsub.write(f'#SBATCH --job-name='+filename[:-4]+'\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output='+filename[:-4]+'.logfile\n')
-            gsub.write('#SBATCH --time=15:00:00\n')
+            gsub.write('#SBATCH --time=10:00:00\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
@@ -342,7 +352,7 @@ def launcherTS(xyzlist):
             
             SP_inputgenerator(xyzfile,filename)
             
-            gsub.write(f'g16 < {filename} > {filename}.log\n')
+            gsub.write(f'g16 < {filename} > {outputfilename}.log\n')
             gsub.write('\n')
             gsub.close()
         

@@ -38,15 +38,15 @@ def extract_values(file_path):
                 match = re.search(r'SCF Done:  E\(RM062X\) =\s+(-?\d+\.\d+)', line)
                 if match:
                     last_scf_done = float(match.group(1))
-            if '-------------------------------------------------------' in line and i + 1 < len(lines):
-                if '# m062x cc-pvdz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
-                    pvdz_energy = last_scf_done
-                elif '# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
-                    pvtz_energy = last_scf_done
-                elif '# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
-                    pvqz_energy = last_scf_done
+            if '-------------------------------------------------------' in line and i + 1 < len(lines) and '# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
+                pvdz_energy = last_scf_done
+            if '-------------------------------------------------------' in line and i + 1 < len(lines) and '# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
+                pvtz_energy = last_scf_done
             if 'Thermal correction to Gibbs Free Energy=' in line:
                 gibbs_free_energy = float(line.split()[-1])
+
+        # Assign the last SCF Done value to pvqz_energy
+        pvqz_energy = last_scf_done
 
     return pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy
 
