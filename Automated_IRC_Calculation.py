@@ -440,7 +440,7 @@ def IRC_inputgenerator(xyzfile, filename, direction):
         ip.writelines("%nprocshared=12\n")
         ip.writelines("%mem=12GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines(f"# irc=({direction},calcfc,maxpoints=100,recalc=3,tight) {functional} {basis_1} {dispersion} {solvent}\n")
+        ip.writelines(f"# irc=({direction},calcfc,maxpoints=100,recalc=3,Tight) {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename+" "+"IRC"+direction+"\n"
         ip.writelines(Title)
