@@ -411,10 +411,9 @@ for file in os.listdir():
     if "IRC" in file and "log" in file and not "logfile" in file:
         with open(file, 'r') as f:
             lines = f.readlines()
-            if "Normal termination" in lines[-1]:
+            if " Pt  1 Step number   5 out of a maximum of" in lines[-1]:
                 logfilelist.append(file)
             else:
-                logfilelist.append(file)
                 errorfiles.append(file)
 
 
