@@ -66,6 +66,9 @@ with open('./parameters.txt', 'r') as parameters:
     multiplicity = re.search(r'Multiplicity (-?\d+)', file_content)
     multiplicity = multiplicity.group(1)
 
+    functional = re.search(r'Functional (.+)', file_content)
+    functional = functional.group(1).strip
+
 with open("../CrestAnalysis.txt", "r") as crest:
     crestlines=crest.read()
 
