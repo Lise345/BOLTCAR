@@ -352,7 +352,7 @@ def launcherTS(xyzlist):
             
             SP_inputgenerator(xyzfile,filename)
             
-            gsub.write(f'g16 < {filename} > {outputfilename}.log\n')
+            gsub.write(f'g16 < {filename} > {outputfilename}\n')
             gsub.write('\n')
             gsub.close()
         
