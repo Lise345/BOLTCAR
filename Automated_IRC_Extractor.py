@@ -75,7 +75,7 @@ print(data)
 
 listofTS=[]
 for caseofTS in data:
-    if data.index(caseofTS)==2:
+    if data.index(caseofTS)==3:
         for i in caseofTS:
             if caseofTS.index(i)>0 and i!=None:
                 listofTS.append(i)
