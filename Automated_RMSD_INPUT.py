@@ -271,7 +271,7 @@ if inp_file_job_ids:
 
     dependency_command = [
         "sbatch",
-        f"--dependency=afterok:{dependency_str}",
+        f"--dependency=afterany:{dependency_str}",
         extractor_script
     ]
 
