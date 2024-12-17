@@ -4,11 +4,11 @@ import pandas as pd
 import numpy as np
 
 
-with open('./parameters.txt', 'r') as parameters:
-    file_content = parameters.read()
+#with open('./parameters.txt', 'r') as parameters:
+    #file_content = parameters.read()
 
-    energy_of_separate_reagents_match = re.search(r'Energy of separate reagents (.+)', file_content)
-    energy_of_separate_reagents = float(energy_of_separate_reagents_match.group(1))
+    #energy_of_separate_reagents_match = re.search(r'Energy of separate reagents (.+)', file_content)
+    #energy_of_separate_reagents = float(energy_of_separate_reagents_match.group(1))
 
 
 def read_parameters(file_path):
@@ -61,7 +61,7 @@ directory = './'
 data_dict = {}
 
 for filename in os.listdir(directory):
-    if filename.startswith('ccpvdz_startgeom-') and (filename.endswith('Complex.log') or filename.endswith('Product.log') or filename.endswith('SP.log')):
+    if filename.startswith('ccpvdz_startgeom-') and (filename.endswith('Complex.log') or filename.endswith('ComplexR1.log') or filename.endswith('ComplexR2.log') or filename.endswith('Product.log') or filename.endswith('SP.log')):
         identification_number = filename.split('-')[1].split('_')[0]
         file_path = os.path.join(directory, filename)
         pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = extract_values(file_path)
@@ -80,6 +80,20 @@ for filename in os.listdir(directory):
                     'Complex PVTZ Energy': pvtz_energy,
                     'Complex PVQZ Energy': pvqz_energy,
                     'Complex Gibbs Correction': gibbs_free_energy,
+                })
+            elif filename.endswith('ComplexR1.log'):
+                data_dict[identification_number].update({
+                    'ComplexR1 PVDZ Energy': pvdz_energy,
+                    'ComplexR1 PVTZ Energy': pvtz_energy,
+                    'ComplexR1 PVQZ Energy': pvqz_energy,
+                    'ComplexR1 Gibbs Correction': gibbs_free_energy,
+                })
+            elif filename.endswith('ComplexR2.log'):
+                data_dict[identification_number].update({
+                    'ComplexR2 PVDZ Energy': pvdz_energy,
+                    'ComplexR2 PVTZ Energy': pvtz_energy,
+                    'ComplexR2 PVQZ Energy': pvqz_energy,
+                    'ComplexR2 Gibbs Correction': gibbs_free_energy,
                 })
             elif filename.endswith('SP.log'):
                 data_dict[identification_number].update({
@@ -127,6 +141,14 @@ if use_cbs_logic:
         (df['Complex PVDZ Energy'] * df['Complex PVQZ Energy'] - df['Complex PVTZ Energy']**2)
         / (df['Complex PVDZ Energy'] + df['Complex PVQZ Energy'] - 2 * df['Complex PVTZ Energy'])
     )
+    df['Extrapolated Reagent 1 Energy'] = (
+        (df['ComplexR1 PVDZ Energy'] * df['ComplexR1 PVQZ Energy'] - df['ComplexR1 PVTZ Energy']**2)
+        / (df['ComplexR1 PVDZ Energy'] + df['ComplexR1 PVQZ Energy'] - 2 * df['ComplexR1 PVTZ Energy'])
+    )
+    df['Extrapolated Reagent 2 Energy'] = (
+        (df['ComplexR2 PVDZ Energy'] * df['ComplexR2 PVQZ Energy'] - df['ComplexR2 PVTZ Energy']**2)
+        / (df['ComplexR2 PVDZ Energy'] + df['ComplexR2 PVQZ Energy'] - 2 * df['ComplexR2 PVTZ Energy'])
+    )
     df['Extrapolated TS Energy'] = (
         (df['TS PVDZ Energy'] * df['TS PVQZ Energy'] - df['TS PVTZ Energy']**2)
         / (df['TS PVDZ Energy'] + df['TS PVQZ Energy'] - 2 * df['TS PVTZ Energy'])
@@ -144,9 +166,11 @@ else:
     df['Extrapolated TS Energy'] = df[ts_basis_energy_label]
     df['Extrapolated Product Energy'] = df[product_basis_energy_label]
 
-df['Complex Energy'] = 627.5 * (df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] - energy_of_separate_reagents)
-df['TS Energy'] = 627.5 * (df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] - energy_of_separate_reagents)
-df['Product Energy'] = 627.5 * (df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] - energy_of_separate_reagents)
+df['energy_of_separate_reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
+
+df['Complex Energy'] = 627.5 * (df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] - df['energy_of_separate_reagents'])
+df['TS Energy'] = 627.5 * (df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] - df['energy_of_separate_reagents'])
+df['Product Energy'] = 627.5 * (df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] - df['energy_of_separate_reagents'])
 
 # Ensure 'Complex Energy' is numeric and handle NaN or non-numeric values
 df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce').fillna(0)
