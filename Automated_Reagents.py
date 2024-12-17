@@ -1,12 +1,10 @@
 import os
 import re
+import subprocess
 
 # Atomic symbols mapping
 atomic_symbols = {
-    1: "H", 2: "He", 3: "Li", 4: "Be", 5: "B", 6: "C", 7: "N", 8: "O", 9: "F", 10: "Ne",
-    11: "Na", 12: "Mg", 13: "Al", 14: "Si", 15: "P", 16: "S", 17: "Cl", 18: "Ar", 19: "K", 20: "Ca",
-    21: "Sc", 22: "Ti", 23: "V", 24: "Cr", 25: "Mn", 26: "Fe", 27: "Co", 28: "Ni", 29: "Cu", 30: "Zn",
-    31: "Ga", 32: "Ge", 33: "As", 34: "Se", 35: "Br", 36: "Kr"
+    1: "H", 6: "C", 7: "N", 8: "O", 9: "F", 16: "S", 17: "Cl"  # Add other atomic symbols if needed
 }
 
 def extract_coordinates_from_log(file_path):
@@ -15,14 +13,11 @@ def extract_coordinates_from_log(file_path):
         lines = file.readlines()
 
     block_starts = [i + 5 for i, line in enumerate(lines) if "Standard orientation" in line]
-
     if not block_starts:
         print(f"Warning: 'Standard orientation' block not found in {file_path}")
         return []
 
-    start = block_starts[-1]  # Take the last occurrence
-    end = start
-
+    start = block_starts[-1]
     for i in range(start, len(lines)):
         if "-----" in lines[i]:
             end = i
@@ -36,7 +31,6 @@ def extract_coordinates_from_log(file_path):
             x, y, z = map(float, parts[3:6])
             atom_symbol = atomic_symbols.get(atom_number, f"Unknown({atom_number})")
             extracted_data.append([atom_symbol, x, y, z])
-
     return extracted_data
 
 def read_parameters(file_path):
@@ -46,61 +40,104 @@ def read_parameters(file_path):
 
     molecule1_atoms = list(map(int, re.search(r'molecule1_atoms\s*=\s*(.+)', file_content).group(1).split()))
     molecule2_atoms = list(map(int, re.search(r'molecule2_atoms\s*=\s*(.+)', file_content).group(1).split()))
-    return molecule1_atoms, molecule2_atoms
+
+    time_sr = re.search(r'Time for Separate Reagent calcs\s+(\d+)', file_content)
+    if time_sr:
+        time_for_sr_calcs = int(time_irc.group(1))
+        irc_time = f'{time_for_sr_calcs}:00:00'  # Format to HH:MM:SS
+    else:
+        sr_time = '25:00:00'  # Default value if not found
+        print("Time for stationary calculations not found, defaulting to 25:00:00")
+
+    return molecule1_atoms, molecule2_atoms,sr_time
 
 def write_gaussian_input(file_name, molecule, suffix):
-    """Writes a Gaussian input file with the extracted coordinates."""
+    """Writes a Gaussian input file."""
+    output_path = f"{file_name}_{suffix}.gjf"
     header = f"""%nprocshared=8
 %mem=16GB
-%chk={file_name}.chk
+%chk={file_name}_{suffix}.chk
 # opt=calcfc freq m062x cc-pvdz empiricaldispersion=gd3 
 
 {file_name}_{suffix} optfreq
 
 0 1\n"""
-
-    output_path = f"{file_name}_{suffix}.gjf"
     with open(output_path, 'w') as output_file:
         output_file.write(header)
         for atom in molecule:
             output_file.write(f" {atom[0]:<2} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
         output_file.write("\n")
-    print(f"Gaussian input file written: {output_path}")
+    return output_path
 
-def process_all_logs(directory, parameters_file):
-    """Processes all *Complex.log files in the directory."""
-    molecule1_indices, molecule2_indices = read_parameters(parameters_file)
+def create_submission_script(job_name, input_file, output_file,sr_time):
+    """Creates a SLURM submission script."""
+    script_name = f"{job_name}.sub"
+    with open(script_name, 'w') as script:
+        script.write(f"""#!/bin/sh
+#SBATCH --job-name={job_name}
+#SBATCH --ntasks=12
+#SBATCH --output={job_name}.logfile
+#SBATCH --time={sr_time}
 
-    for filename in os.listdir(directory):
-        if filename.endswith("Complex.log"):
-            file_path = os.path.join(directory, filename)
-            print(f"Processing file: {filename}")
+module load Gaussian/G16.A.03-intel-2022a
+export GAUSS_SCRDIR=$TMPDIR
+g16 < {input_file} > {output_file}
+""")
+    return script_name
 
-            extracted_atoms = extract_coordinates_from_log(file_path)
-            if not extracted_atoms:
-                print(f"Skipping {filename}: No coordinates found.")
-                continue
+def launcher(log_files, parameters_file, dependency_script):
+    """Generates Gaussian input files, submission scripts, and launches jobs."""
+    molecule1_indices, molecule2_indices, sr_time = read_parameters(parameters_file)
+    job_ids = []
 
-            # Ensure indices are valid
-            max_index = len(extracted_atoms)
-            if any(i > max_index for i in molecule1_indices + molecule2_indices):
-                print(f"Error: Indices exceed available atoms in {filename}.")
-                continue
+    for log_file in log_files:
+        base_name = os.path.splitext(log_file)[0]
+        extracted_atoms = extract_coordinates_from_log(log_file)
+        
+        if not extracted_atoms:
+            print(f"Skipping {log_file}: No coordinates extracted.")
+            continue
 
-            # Extract molecule coordinates
-            molecule1 = [extracted_atoms[i - 1] for i in molecule1_indices]
-            molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
+        # Extract molecules
+        molecule1 = [extracted_atoms[i - 1] for i in molecule1_indices]
+        molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
 
-            # Generate Gaussian input files for R1 and R2
-            base_name = os.path.splitext(filename)[0]
-            write_gaussian_input(base_name, molecule1, "R1")
-            write_gaussian_input(base_name, molecule2, "R2")
+        # Write input files
+        input_R1 = write_gaussian_input(base_name, molecule1, "R1")
+        input_R2 = write_gaussian_input(base_name, molecule2, "R2")
+        
+        # Create and submit jobs
+        for suffix, input_file in zip(["R1", "R2"], [input_R1, input_R2]):
+            output_file = input_file.replace(".gjf", ".log")
+            job_name = f"{base_name}_{suffix}"
+            script_name = create_submission_script(job_name, input_file, output_file, sr_time)
 
-def main():
-    directory = "./"  # Directory with .log files
-    parameters_file = "parameters.txt"  # Path to parameters.txt
+            result = subprocess.run(f"sbatch {script_name}", shell=True, stdout=subprocess.PIPE, text=True)
+            if result.returncode == 0:
+                job_id = re.search(r'(\d+)', result.stdout)
+                if job_id:
+                    job_ids.append(job_id.group(1))
+                    print(f"Submitted job {job_name} with ID {job_id.group(1)}")
+            else:
+                print(f"Failed to submit job {job_name}: {result.stderr}")
 
-    process_all_logs(directory, parameters_file)
+    # Launch dependent script
+    if job_ids:
+        dependency_str = ":".join(job_ids)
 
+        command = f"sbatch --dependency=afterany:{dependency_str} {dependency_script}"
+        
+        result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, text=True)
+        if result.returncode == 0:
+            print(f"Dependent script {dependency_script} submitted successfully.")
+        else:
+            print(f"Failed to submit dependent script: {result.stderr}")
+    else:
+        print("No jobs submitted, skipping dependent script.")
+
+# Main workflow
 if __name__ == "__main__":
-    main()
+    log_files = [f for f in os.listdir("./") if f.endswith("Complex.log")]
+    parameters_file = "parameters.txt"
+    dependency_script = "5_FASTCAR_results.sub"
+    launcher(log_files, parameters_file, dependency_script)
