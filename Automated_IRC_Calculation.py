@@ -69,6 +69,14 @@ with open('./parameters.txt', 'r') as parameters:
     functional = re.search(r'Functional (.+)', file_content)
     functional = functional.group(1).strip()
 
+    time_irc = re.search(r'Time for IRC calcs\s+(\d+)', file_content)
+    if time_irc:
+        time_for_irc_calcs = int(time_irc.group(1))
+        irc_time = f'{time_for_irc_calcs}:00:00'  # Format to HH:MM:SS
+    else:
+        irc_time = '25:00:00'  # Default value if not found
+        print("Time for stationary calculations not found, defaulting to 25:00:00")
+
 with open("../CrestAnalysis.txt", "r") as crest:
     crestlines=crest.read()
 
@@ -472,7 +480,7 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
-            gsub.write('#SBATCH --time=10:00:00\n')
+            gsub.write(f'#SBATCH --time={IRC_time}\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
