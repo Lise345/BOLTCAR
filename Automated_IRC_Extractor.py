@@ -9,6 +9,21 @@ with open('./parameters.txt', 'r') as parameters:
     print("File content read by script:")
     print(repr(file_content))  # Use repr() to reveal hidden characters like \n or spaces
 
+    time_statp = re.search(r'Time for stationary calcs\s+(\d+)', file_content)
+    if time_statp:
+        time_for_stationary_calcs = int(time_statp.group(1))
+        statp_time = f'{time_for_stationary_calcs}:00:00'  # Format to HH:MM:SS
+    else:
+        statp_time = '25:00:00'  # Default value if not found
+        print("Time for stationary calculations not found, defaulting to 25:00:00")
+
+    time_TS = re.search(r'Time for TS calcs\s+(\d+)', file_content)
+    if time_TS:
+        time_for_TS = int(time_TS.group(1))
+        TS_time = f'{time_for_TS}:00:00'  # Format to HH:MM:SS
+    else:
+        TS_time = '25:00:00'  # Default value if not found
+        print("Time for stationary calculations not found, defaulting to 25:00:00")
 
     # Extract the size_molecule value
     size_molecule_match = re.search(r'size_molecule\s*=\s*(\d+)', file_content)
@@ -287,7 +302,7 @@ def launcherstatp(logfilelist):
                     gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
                     gsub.write('#SBATCH --ntasks=12\n')
                     gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
-                    gsub.write('#SBATCH --time=15:00:00\n')
+                    gsub.write(f'#SBATCH --time={statp_time}\n')
                     gsub.write('\n')
                     gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
                     gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')
@@ -339,7 +354,7 @@ def launcherTS(xyzlist):
             gsub.write(f'#SBATCH --job-name='+filename[:-4]+'\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output='+filename[:-4]+'.logfile\n')
-            gsub.write('#SBATCH --time=10:00:00\n')
+            gsub.write(f'#SBATCH --time={TS_time}\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
