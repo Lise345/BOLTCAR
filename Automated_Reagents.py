@@ -1,6 +1,5 @@
 import os
 import re
-import numpy as np
 
 # Atomic symbols mapping
 atomic_symbols = {
@@ -11,15 +10,21 @@ atomic_symbols = {
 }
 
 def extract_coordinates_from_log(file_path):
-    """Extracts atomic symbols and coordinates from a Complex.log file."""
+    """Extracts atomic symbols and coordinates from the LAST Standard orientation block."""
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
-    start, end = None, None
-    for i, line in enumerate(lines):
-        if "Standard orientation" in line:
-            start = i + 5  # Start after the dashed lines
-        elif start and "-----" in line:
+    block_starts = [i + 5 for i, line in enumerate(lines) if "Standard orientation" in line]
+
+    if not block_starts:
+        print(f"Warning: 'Standard orientation' block not found in {file_path}")
+        return []
+
+    start = block_starts[-1]  # Take the last occurrence
+    end = start
+
+    for i in range(start, len(lines)):
+        if "-----" in lines[i]:
             end = i
             break
 
@@ -31,6 +36,7 @@ def extract_coordinates_from_log(file_path):
             x, y, z = map(float, parts[3:6])
             atom_symbol = atomic_symbols.get(atom_number, f"Unknown({atom_number})")
             extracted_data.append([atom_symbol, x, y, z])
+
     return extracted_data
 
 def read_parameters(file_path):
@@ -42,56 +48,58 @@ def read_parameters(file_path):
     molecule2_atoms = list(map(int, re.search(r'molecule2_atoms\s*=\s*(.+)', file_content).group(1).split()))
     return molecule1_atoms, molecule2_atoms
 
-def write_gaussian_input(file_name, molecule1, molecule2):
+def write_gaussian_input(file_name, molecule, suffix):
     """Writes a Gaussian input file with the extracted coordinates."""
     header = f"""%nprocshared=8
 %mem=16GB
 %chk={file_name}.chk
 # opt=calcfc freq m062x cc-pvdz empiricaldispersion=gd3 
 
-{file_name} optfreq
+{file_name}_{suffix} optfreq
 
 0 1\n"""
 
-    output_path = f"{file_name}_R1.gjf"
+    output_path = f"{file_name}_{suffix}.gjf"
     with open(output_path, 'w') as output_file:
         output_file.write(header)
-        for atom in molecule1 + molecule2:
+        for atom in molecule:
             output_file.write(f" {atom[0]:<2} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
-
-        output_file.write("\n--Link1--\n%nprocshared=8\n%mem=16GB\n%chk={file_name}.chk\n")
-        output_file.write("# m062x cc-pvtz empiricaldispersion=gd3  Geom=Checkpoint\n\n")
-        output_file.write(f"{file_name} optfreq E_ccpvtz\n\n0 1\n\n")
-        output_file.write("--Link1--\n%nprocshared=8\n%mem=16GB\n%chk={file_name}.chk\n")
-        output_file.write("# m062x cc-pvqz empiricaldispersion=gd3  Geom=Checkpoint\n\n")
-        output_file.write(f"{file_name} optfreq E_ccpvqz\n\n0 1\n")
-
+        output_file.write("\n")
     print(f"Gaussian input file written: {output_path}")
 
 def process_all_logs(directory, parameters_file):
     """Processes all *Complex.log files in the directory."""
     molecule1_indices, molecule2_indices = read_parameters(parameters_file)
-    
+
     for filename in os.listdir(directory):
         if filename.endswith("Complex.log"):
             file_path = os.path.join(directory, filename)
             print(f"Processing file: {filename}")
-            
-            # Extract coordinates
+
             extracted_atoms = extract_coordinates_from_log(file_path)
-            
-            # Split into molecule 1 and molecule 2
+            if not extracted_atoms:
+                print(f"Skipping {filename}: No coordinates found.")
+                continue
+
+            # Ensure indices are valid
+            max_index = len(extracted_atoms)
+            if any(i > max_index for i in molecule1_indices + molecule2_indices):
+                print(f"Error: Indices exceed available atoms in {filename}.")
+                continue
+
+            # Extract molecule coordinates
             molecule1 = [extracted_atoms[i - 1] for i in molecule1_indices]
             molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
-            
-            # Generate Gaussian input file
+
+            # Generate Gaussian input files for R1 and R2
             base_name = os.path.splitext(filename)[0]
-            write_gaussian_input(base_name, molecule1, molecule2)
+            write_gaussian_input(base_name, molecule1, "R1")
+            write_gaussian_input(base_name, molecule2, "R2")
 
 def main():
-    directory = "./"  # Set to the folder containing your .log files
+    directory = "./"  # Directory with .log files
     parameters_file = "parameters.txt"  # Path to parameters.txt
-    
+
     process_all_logs(directory, parameters_file)
 
 if __name__ == "__main__":
