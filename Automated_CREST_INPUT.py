@@ -254,9 +254,9 @@ with open('script_CREST.sub', 'w') as file:
     file.write(f'module load CREST/2.12-gfbf-2023a\n')
     file.write(f'xtb struc.xyz --opt extreme --gfn 2 --input constraints.inp > xtb.out\n')
     file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')	
-    #file.write(f'crest struc.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
     file.write(f'crest coord -cregen crest_conformers.xyz -ewin 30\n')
-    #file.write(f'cp ../Automated_RMSD_INPUT.py ./\n')
+    file.write(f'cp ../Automated_RMSD_INPUT.py ./\n')
+    file.write(f'dos2unix Automated_RMSD_INPUT.py\n')
     file.write(f'./Automated_RMSD_INPUT.py\n')
     file.write('\n')
 
