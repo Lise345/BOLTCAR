@@ -232,7 +232,7 @@ if ' CREST terminated normally.' in last_line:
             gsub.write(f'#SBATCH --job-name={base_name}_{experience_number}-{match}\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output={base_name}_{experience_number}-{match}.logfile\n')
-            gsub.write('#SBATCH --time={TS_time}:00:00\n')
+            gsub.write(f''#SBATCH --time={TS_time}\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
