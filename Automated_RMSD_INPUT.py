@@ -189,12 +189,13 @@ if ' CREST terminated normally.' in last_line:
 
     n = 1
     MAX_JOBS = 10
+    MAX_SUB_FILES = 50  # Maximum number of .sub files allowed
     listn = ordxyzlist[:]
     print(listn)
     
     inp_file_job_ids = []
-
-    while listn:
+    
+    while listn and n <= MAX_SUB_FILES:  # Stop if the limit is reached
         match = re.search(r'\d+', listn[0]).group()
         fout = open(f"input_{experience_number}-{match}.inp", "w+")
         with open(listn[0], 'r') as fp:
@@ -210,7 +211,7 @@ if ' CREST terminated normally.' in last_line:
                 fout.writelines(''.join(map(str, item)))
             fout.writelines('\n')
         fp.close()
-
+    
         removals = xyzlistcleaner(listn)
         for file_to_remove in removals:
             os.remove(file_to_remove)
@@ -226,7 +227,7 @@ if ' CREST terminated normally.' in last_line:
             gsub.write('#SBATCH --time=05:00:00\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
-            gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
+            gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
             gsub.write('\n')
             gsub.write('# Setting up Gaussian environment\n')
             gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')  # Temporary directory for Gaussian scratch files
@@ -236,9 +237,7 @@ if ' CREST terminated normally.' in last_line:
             gsub.write('dos2unix input_{experience_number}-{match}.inp\n')
             gsub.write(f'g16 < input_{experience_number}-{match}.inp > {base_name}_{experience_number}-{match}.log\n')
             gsub.write('\n')
-
-        #dos2unix {base_name}_{experience_number}-{match}.sub
-
+    
         sbatch_command = f"sbatch {base_name}_{experience_number}-{match}g16.sub"
         
         result = subprocess.run(
@@ -248,40 +247,40 @@ if ' CREST terminated normally.' in last_line:
             stderr=subprocess.PIPE,
             universal_newlines=True
         )
-    
+        
         if result.returncode == 0:
-        # Extract the job ID from the sbatch output
             job_id_match = re.search(r'(\d+)', result.stdout)
             if job_id_match:
                 job_id = job_id_match.group(1)
-                inp_file_job_ids.append(job_id)  # Collect job IDs for inp_file jobs
-                n += 1  # Increment the counter
+                inp_file_job_ids.append(job_id)
+                n += 1
                 print(f"Submitted job {n}/{MAX_JOBS} for file")
             else:
                 print(f"Failed to extract job ID for {sbatch_command}. Output: {result.stdout}")
         else:
             print(f"Failed to submit job for {sbatch_command}: {result.stderr}")
-            
-if inp_file_job_ids:
-    dependency_str = ":".join(inp_file_job_ids)
-    extractor_script = os.path.join(rootdir,'2_IRC_calculator.sub')
-
-    if not os.path.exists(extractor_script):
-        raise FileNotFoundError(f"Extractor script not found: {extractor_script}")
-
-    dependency_command = [
-        "sbatch",
-        f"--dependency=afterany:{dependency_str}",
-        extractor_script
-    ]
-
-    result = subprocess.run(dependency_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-    if result.returncode == 0:
-        print(f"Extractor job submitted successfully: {result.stdout}")
+    
+    if inp_file_job_ids:
+        dependency_str = ":".join(inp_file_job_ids)
+        extractor_script = os.path.join(rootdir, '2_IRC_calculator.sub')
+    
+        if not os.path.exists(extractor_script):
+            raise FileNotFoundError(f"Extractor script not found: {extractor_script}")
+    
+        dependency_command = [
+            "sbatch",
+            f"--dependency=afterany:{dependency_str}",
+            extractor_script
+        ]
+    
+        result = subprocess.run(dependency_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        if result.returncode == 0:
+            print(f"Extractor job submitted successfully: {result.stdout}")
+        else:
+            print(f"Failed to submit extractor job: {result.stderr}")
     else:
-        print(f"Failed to submit extractor job: {result.stderr}")
-else:
-    print("No jobs were submitted, skipping dependency job submission.")
+        print("No jobs were submitted, skipping dependency job submission.")
+
         
 
        
