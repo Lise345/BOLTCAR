@@ -82,6 +82,14 @@ with open('../parameters.txt', 'r') as parameters:
     binfolder = re.search(r'bin (.+)', file_content)
     binfolder = binfolder.group(1)
 
+    time_TS = re.search(r'Time for TS calcs\s+(\d+)', file_content)
+    if time_TS:
+        time_for_TS = int(time_TS.group(1))
+        TS_time = f'{time_for_TS}:00:00'  # Format to HH:MM:SS
+    else:
+        TS_time = '25:00:00'  # Default value if not found
+        print("Time for stationary calculations not found, defaulting to 25:00:00")
+
 
 def read_coordinates(file_path):
     with open(file_path, 'r') as file:
@@ -224,7 +232,7 @@ if ' CREST terminated normally.' in last_line:
             gsub.write(f'#SBATCH --job-name={base_name}_{experience_number}-{match}\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output={base_name}_{experience_number}-{match}.logfile\n')
-            gsub.write('#SBATCH --time=05:00:00\n')
+            gsub.write('#SBATCH --time={TS_time}:00:00\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
