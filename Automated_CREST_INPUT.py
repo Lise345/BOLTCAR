@@ -237,6 +237,7 @@ with open('script_CREST.sub', 'w') as file:
     file.write('#SBATCH --nodes=1 \n')
     file.write('#SBATCH --ntasks=6 \n')
     file.write(f'#SBATCH --output=CREST_{base_name}.logfile \n')
+    file.write('#SBATCH --chdir=$SLURM_SUBMIT_DIR \n')
     file.write('#SBATCH --time=48:00:00 \n')
     file.write('\n')
     file.write('cd ${SLURM_SUBMIT_DIR} \n')
