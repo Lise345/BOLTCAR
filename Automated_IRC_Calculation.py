@@ -480,7 +480,7 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
-            gsub.write(f'#SBATCH --time={IRC_time}\n')
+            gsub.write(f'#SBATCH --time={irc_time}\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
