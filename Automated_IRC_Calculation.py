@@ -149,21 +149,26 @@ print(errorterm)
 def lastgeometry(filename):
     with open(filename, "r") as readfile:
         lines = readfile.readlines()
-        indices=[]
-        for line in lines:
-            if "Standard orientation" in line:
-                index_line=lines.index(line)
-                indices.append(index_line)
-        last_index=indices[-1]
+        indices = []
         
-        start=last_index+5
-        i=start
-        coord=[]
-        while (i-start)-1<size_molecule:
-            strippedline=lines[i].split()
+        # Find all indices where "Standard orientation" appears
+        for idx, line in enumerate(lines):
+            if "Standard orientation" in line:
+                indices.append(idx)
+        
+        # Get the last occurrence index
+        if not indices:
+            raise ValueError("No 'Standard orientation' found in the file.")
+        last_index = indices[-1]
+        
+        # Extract geometry from lines after the last "Standard orientation"
+        start = last_index + 5
+        coord = []
+        for i in range(start, start + size_molecule):
+            strippedline = lines[i].split()
             number_list = [float(num) for num in strippedline]
             coord.append(number_list)
-            i=i+1
+    
     return coord
 
 # Dictionary mapping atomic numbers to element symbols 
@@ -480,7 +485,7 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
-            gsub.write(f'#SBATCH --time={irc_time}\n')
+            gsub.write(f'#SBATCH --time={IRC_time}\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
