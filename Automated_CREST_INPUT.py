@@ -23,10 +23,81 @@ import numpy as np
 #  5 - Results_CREST.py (extracting results of the DFT calculations to an excel file and calculate Boltzmann population for each of the reactions) 
 #
 
+with open('./parameters.txt', 'r') as parameters:
+    file_content = parameters.read()
+
+    size_molecule = re.search(r'size_molecule\s*=\s*(\S+)', file_content)
+    size_molecule = int(size_molecule.group(1))  # Adjust for zero-based indexing
 
 # Get the file name from the command-line argument
 file_name = sys.argv[1]
 base_name = os.path.splitext(file_name)[0]
+
+def lastgeometry(filename):
+    with open(filename, "r") as readfile:
+        lines = readfile.readlines()
+        indices = []
+        
+        # Find all indices where "Standard orientation" appears
+        for idx, line in enumerate(lines):
+            if "Standard orientation" in line:
+                indices.append(idx)
+        
+        # Get the last occurrence index
+        if not indices:
+            raise ValueError("No 'Standard orientation' found in the file.")
+        last_index = indices[-1]
+        
+        # Extract geometry from lines after the last "Standard orientation"
+        start = last_index + 5
+        coord = []
+        for i in range(start, start + size_molecule):
+            strippedline = lines[i].split()
+            number_list = [float(num) for num in strippedline]
+            coord.append(number_list)
+    
+    return coord
+
+def atomincoord(coord):
+    for atom in coord:
+        atom_number = atom[1]
+        
+        if atom_number in atomic_symbols:
+            atom[1] = atomic_symbols[atom_number]
+        else:
+            print("Atom does not exist")
+    return coord
+
+# Dictionary mapping atomic numbers to element symbols 
+atomic_symbols = {
+    1: "H", 2: "He", 3: "Li", 4: "Be", 5: "B", 6: "C", 7: "N", 8: "O", 9: "F", 10: "Ne",
+    11: "Na", 12: "Mg", 13: "Al", 14: "Si", 15: "P", 16: "S", 17: "Cl", 18: "Ar", 19: "K", 20: "Ca",
+    21: "Sc", 22: "Ti", 23: "V", 24: "Cr", 25: "Mn", 26: "Fe", 27: "Co", 28: "Ni", 29: "Cu", 30: "Zn",
+    31: "Ga", 32: "Ge", 33: "As", 34: "Se", 35: "Br", 36: "Kr", 37: "Rb", 38: "Sr", 39: "Y", 40: "Zr",
+    41: "Nb", 42: "Mo", 43: "Tc", 44: "Ru", 45: "Rh", 46: "Pd", 47: "Ag", 48: "Cd", 49: "In", 50: "Sn",
+    51: "Sb", 52: "Te", 53: "I", 54: "Xe", 55: "Cs", 56: "Ba", 57: "La", 58: "Ce", 59: "Pr", 60: "Nd",
+    61: "Pm", 62: "Sm", 63: "Eu", 64: "Gd", 65: "Tb", 66: "Dy", 67: "Ho", 68: "Er", 69: "Tm", 70: "Yb",
+    71: "Lu", 72: "Hf", 73: "Ta", 74: "W", 75: "Re", 76: "Os", 77: "Ir", 78: "Pt", 79: "Au", 80: "Hg",
+    81: "Tl", 82: "Pb", 83: "Bi", 84: "Po", 85: "At", 86: "Rn", 87: "Fr", 88: "Ra", 89: "Ac", 90: "Th",
+    91: "Pa", 92: "U", 93: "Np", 94: "Pu", 95: "Am", 96: "Cm", 97: "Bk", 98: "Cf", 99: "Es", 100: "Fm",
+    101: "Md", 102: "No", 103: "Lr", 104: "Rf", 105: "Db", 106: "Sg", 107: "Bh", 108: "Hs", 109: "Mt",
+    110: "Ds", 111: "Rg", 112: "Cn", 113: "Nh", 114: "Fl", 115: "Mc", 116: "Lv", 117: "Ts", 118: "Og"
+}
+
+def convert_gjf_to_xyz(filename):
+    coord=lastgeometry(filename)
+    newcoord=atomincoord(coord)
+
+    newfile="struc.xyz"
+    if newfile in os.listdir():
+        os.remove(newfile)
+    xyzfile=open(newfile, "x")
+
+    xyzfile.writelines(str(size_molecule) + '\n')
+    xyzfile.writelines('\n')
+    for atom in newcoord:
+        xyzfile.writelines(atom[1]+' '+str(atom[3])+' '+str(atom[4])+' '+str(atom[5])+'\n')
+    return 'Done'
 
 # Check if calculation ended properly
 with open(file_name, 'r') as f:
@@ -40,24 +111,15 @@ with open(file_name, 'r') as f:
         multiplicity_match = re.search(r'Multiplicity\s*=\s*(-?\d+)\s*', file_content)
         multiplicity = int(multiplicity_match.group(1))
 
-# Extract geometry from final block of text from Gaussian 16
-        pattern = r'\\' + '(.*)' + r'\\'
-        match = re.search(pattern, file_content, re.DOTALL)
-        coordinates = match.group(1)
-        coordinates = re.sub(r'[\r\n\s]+', '', coordinates)
-        pattern = r'\\' + f'{charge},{multiplicity}' + r'\\(.*?)\\Version'
-        match = re.search(pattern, coordinates)
-        coordinates = match.group(1)
-        coordinates = coordinates.replace("\\", "\n")
-        coordinates = coordinates.replace(",", "      ")
-
-        num_atom = len(coordinates.split('\n')) - 1
+        coordinates=lastgeometry(file_name)
 
 # Create struc.xyz for CREST calculation
         with open('struc.xyz', 'w') as file:
-            file.write(f'{num_atom}\n')
+            file.write(f'{size_molecule}\n')
             file.write('\n')
             file.write(f'{coordinates}')
+
+
 
 # Extract imaginary frequency if it exists
         start_phrase = '******    1 imaginary frequencies (negative Signs) ******'
@@ -80,6 +142,7 @@ with open(file_name, 'r') as f:
         print('Please provide a suitable input.')
         sys.exit()
 
+convert_gjf_to_xyz(file_name)
 
 # Get information from parameters.txt file
 with open('parameters.txt', 'r') as parameters:
@@ -237,7 +300,6 @@ with open('script_CREST.sub', 'w') as file:
     file.write('#SBATCH --nodes=1 \n')
     file.write('#SBATCH --ntasks=6 \n')
     file.write(f'#SBATCH --output=CREST_{base_name}.logfile \n')
-    file.write('#SBATCH --chdir=$SLURM_SUBMIT_DIR \n')
     file.write('#SBATCH --time=48:00:00 \n')
     file.write('\n')
     file.write('cd ${SLURM_SUBMIT_DIR} \n')
@@ -255,9 +317,9 @@ with open('script_CREST.sub', 'w') as file:
     file.write(f'module load CREST/2.12-gfbf-2023a\n')
     file.write(f'xtb struc.xyz --opt extreme --gfn 2 --input constraints.inp > xtb.out\n')
     file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')	
+    #file.write(f'crest struc.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
     file.write(f'crest coord -cregen crest_conformers.xyz -ewin 30\n')
-    file.write(f'cp ../Automated_RMSD_INPUT.py ./\n')
-    file.write(f'dos2unix Automated_RMSD_INPUT.py\n')
+    #file.write(f'cp ../Automated_RMSD_INPUT.py ./\n')
     file.write(f'./Automated_RMSD_INPUT.py\n')
     file.write('\n')
 
