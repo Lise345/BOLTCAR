@@ -423,13 +423,17 @@ def launch_dependent_job():
 logfilelist=[]
 errorfiles=[]
 for file in os.listdir():
-    if "IRC" in file and "log" in file and not "logfile" in file:
+    if "forward.log" in file:
         with open(file, 'r') as f:
             lines = f.readlines()
-            if " Pt  1 Step number   5 out of a maximum of" in lines[-1]:
+            # Check if "# OF POINTS ALONG THE PATH =   5" exists in any of the lines
+            if any(" Step" in line for line in lines):
                 logfilelist.append(file)
             else:
                 errorfiles.append(file)
+
+print('LOGFILELIST:', logfilelist)
+print('ERRORFILES:', errorfiles)
 
 
 launcherstatp(logfilelist)
