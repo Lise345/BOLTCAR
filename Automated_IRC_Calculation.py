@@ -428,9 +428,9 @@ def save_to_excel(incorrectTS, correctTS, IRClist, listfiles, crestconformers, e
         "CREST TS":pd.Series(crestconformers),
         "TS after optimization":pd.Series(listfiles),
         "Correct TS": pd.Series(correctTS),
-        "IRC List": pd.Series(IRClist),
-        "Incorrect TS": pd.Series(incorrectTS),
-        "Error Termination": pd.Series(errorterm)
+        "Incorrect TS (invalid frequency)": pd.Series(incorrectTS),
+        "Error Termination (incompleted simulation)": pd.Series(errorterm)
+        "IRC List after cleaning": pd.Series(IRClist),
     }
 
     # Convert the dictionary into a DataFrame
