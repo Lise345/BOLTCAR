@@ -4,6 +4,8 @@ import sys
 import re
 import openpyxl
 
+#-----Read parameters-----
+
 with open('./parameters.txt', 'r') as parameters:
     file_content = parameters.read()
     print("File content read by script:")
@@ -274,7 +276,7 @@ def distance(geometry, coordinates):
     return r
 
 
-#-------------Launch calculations-----------------
+#-------------Input files and launcher-----------------
 
 
 import os
@@ -434,6 +436,33 @@ for file in os.listdir():
 
 print('LOGFILELIST:', logfilelist)
 print('ERRORFILES:', errorfiles)
+
+#-----log errors to Excel------
+
+# Add a new worksheet to log the IRC succeeded and failed cases
+new_sheet_name = "IRC Results"
+if new_sheet_name in workbook.sheetnames:
+    worksheet = workbook[new_sheet_name]
+else:
+    worksheet = workbook.create_sheet(title=new_sheet_name)
+
+# Write headers
+worksheet.cell(row=1, column=1, value="IRC succeeded")
+worksheet.cell(row=1, column=2, value="IRC failed")
+
+# Write IRC succeeded log files
+for i, logfile in enumerate(logfilelist, start=2):  # Start from row 2
+    worksheet.cell(row=i, column=1, value=logfile)
+
+# Write IRC failed log files
+for i, errorfile in enumerate(errorfiles, start=2):  # Start from row 2
+    worksheet.cell(row=i, column=2, value=errorfile)
+
+# Save changes to the Excel file
+workbook.save("TS_analysis.xlsx")
+print(f"IRC results tab '{new_sheet_name}' added to TS_analysis.xlsx")
+
+#-----Run scripts------
 
 
 launcherstatp(logfilelist)
