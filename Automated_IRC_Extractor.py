@@ -427,7 +427,7 @@ for file in os.listdir():
         with open(file, 'r') as f:
             lines = f.readlines()
             # Check if "# OF POINTS ALONG THE PATH =   5" exists in any of the lines
-            if any(" Step" in line for line in lines):
+            if any("# OF POINTS ALONG THE PATH =   5" in line for line in lines):
                 logfilelist.append(file)
             else:
                 errorfiles.append(file)
