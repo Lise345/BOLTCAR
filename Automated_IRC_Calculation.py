@@ -77,6 +77,13 @@ with open('./parameters.txt', 'r') as parameters:
         irc_time = '25:00:00'  # Default value if not found
         print("Time for stationary calculations not found, defaulting to 25:00:00")
 
+    # Extract the CC1_in value
+    CC1_in_match = re.search(r'CC1_in\s*=\s*"(.*?)"', file_content)
+    if CC1_in_match:
+        CC1_in = list(map(int, CC1_in_match.group(1).split()))
+    atom1=CC1_in[0]
+    atom2=CC1_in[1]
+
 with open("../CrestAnalysis.txt", "r") as crest:
     crestlines=crest.read()
 
@@ -149,26 +156,21 @@ print(errorterm)
 def lastgeometry(filename):
     with open(filename, "r") as readfile:
         lines = readfile.readlines()
-        indices = []
-        
-        # Find all indices where "Standard orientation" appears
-        for idx, line in enumerate(lines):
-            if "Standard orientation" in line:
+        indices=[]
+        for idx, line in enumerate(lines):  # Track index manually
+            if "                         Standard orientation:                        " in line:
                 indices.append(idx)
+        last_index=indices[-1]
+        print(last_index)
         
-        # Get the last occurrence index
-        if not indices:
-            raise ValueError("No 'Standard orientation' found in the file.")
-        last_index = indices[-1]
-        
-        # Extract geometry from lines after the last "Standard orientation"
-        start = last_index + 5
-        coord = []
-        for i in range(start, start + size_molecule):
-            strippedline = lines[i].split()
+        start=last_index+5
+        i=start
+        coord=[]
+        while (i-start)-1<size_molecule:
+            strippedline=lines[i].split()
             number_list = [float(num) for num in strippedline]
             coord.append(number_list)
-    
+            i=i+1
     return coord
 
 # Dictionary mapping atomic numbers to element symbols 
@@ -428,9 +430,9 @@ def save_to_excel(incorrectTS, correctTS, IRClist, listfiles, crestconformers, e
         "CREST TS":pd.Series(crestconformers),
         "TS after optimization":pd.Series(listfiles),
         "Correct TS": pd.Series(correctTS),
-        "Incorrect TS (invalid frequency)": pd.Series(incorrectTS),
-        "Error Termination (incompleted simulation)": pd.Series(errorterm)
-        "IRC List after cleaning": pd.Series(IRClist),
+        "IRC List": pd.Series(IRClist),
+        "Incorrect TS": pd.Series(incorrectTS),
+        "Error Termination": pd.Series(errorterm)
     }
 
     # Convert the dictionary into a DataFrame
@@ -453,7 +455,7 @@ def IRC_inputgenerator(xyzfile, filename, direction):
         ip.writelines("%nprocshared=12\n")
         ip.writelines("%mem=12GB\n")
         ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
-        ip.writelines(f"# irc=({direction},calcfc,maxpoints=100,recalc=3,Tight) {functional} {basis_1} {dispersion} {solvent}\n")
+        ip.writelines(f"# irc=({direction},phase=({atom1},{atom2}),calcfc,maxpoints=100,recalc=3,Tight) {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename+" "+"IRC"+direction+"\n"
         ip.writelines(Title)
@@ -485,21 +487,20 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
-            gsub.write(f'#SBATCH --time={IRC_time}\n')
+            gsub.write(f'#SBATCH --time={irc_time}\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
             gsub.write('\n')
             gsub.write('# Setting up Gaussian environment\n')
-            gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')
+            gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')  # Temporary directory for Gaussian scratch files
             gsub.write('mkdir -p $GAUSS_SCRDIR\n')
             gsub.write('#Launching calculation\n')
             gsub.write('export PATH={binfolder}:$PATH\n')
             gsub.write('dos2unix {filename_forward}\n')
             gsub.write('dos2unix {filename_reverse}\n')
-            gsub.write(f'g16 < {filename_forward} > {output_forward} &\n')
-            gsub.write(f'g16 < {filename_reverse} > {output_reverse} &\n')
-            gsub.write('wait\n')
+            gsub.write(f'g16 < {filename_forward} > {output_forward}\n')
+            gsub.write(f'g16 < {filename_reverse} > {output_reverse}\n')
             gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
             gsub.write('\n')
 
