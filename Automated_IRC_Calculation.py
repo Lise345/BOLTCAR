@@ -491,7 +491,7 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
             gsub.write('\n')
             gsub.write('# Setting up Gaussian environment\n')
-            gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')  # Temporary directory for Gaussian scratch files
+            gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')
             gsub.write('mkdir -p $GAUSS_SCRDIR\n')
             gsub.write('#Launching calculation\n')
             gsub.write('export PATH={binfolder}:$PATH\n')
@@ -500,6 +500,7 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write(f'g16 < {filename_forward} > {output_forward} &\n')
             gsub.write(f'g16 < {filename_reverse} > {output_reverse} &\n')
             gsub.write('wait\n')
+            gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
             gsub.write('\n')
 
     
