@@ -499,8 +499,9 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write('export PATH={binfolder}:$PATH\n')
             gsub.write('dos2unix {filename_forward}\n')
             gsub.write('dos2unix {filename_reverse}\n')
-            gsub.write(f'g16 < {filename_forward} > {output_forward}\n')
-            gsub.write(f'g16 < {filename_reverse} > {output_reverse}\n')
+            gsub.write(f'g16 < {filename_forward} > {output_forward} &\n')
+            gsub.write(f'g16 < {filename_reverse} > {output_reverse} &\n')
+            gsub.write('wait\n')
             gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
             gsub.write('\n')
 
