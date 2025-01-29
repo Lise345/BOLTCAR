@@ -61,7 +61,7 @@ directory = './'
 data_dict = {}
 
 for filename in os.listdir(directory):
-    if filename.startswith('ccpvdz_startgeom-') and (filename.endswith('Complex.log') or filename.endswith('ComplexR1.log') or filename.endswith('ComplexR2.log') or filename.endswith('Product.log') or filename.endswith('SP.log')):
+    if filename.startswith('ccpvdz_startgeom-') and (filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log')):
         identification_number = filename.split('-')[1].split('_')[0]
         file_path = os.path.join(directory, filename)
         pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = extract_values(file_path)
@@ -81,14 +81,14 @@ for filename in os.listdir(directory):
                     'Complex PVQZ Energy': pvqz_energy,
                     'Complex Gibbs Correction': gibbs_free_energy,
                 })
-            elif filename.endswith('ComplexR1.log'):
+            elif filename.endswith('Complex_R1.log'):
                 data_dict[identification_number].update({
                     'ComplexR1 PVDZ Energy': pvdz_energy,
                     'ComplexR1 PVTZ Energy': pvtz_energy,
                     'ComplexR1 PVQZ Energy': pvqz_energy,
                     'ComplexR1 Gibbs Correction': gibbs_free_energy,
                 })
-            elif filename.endswith('ComplexR2.log'):
+            elif filename.endswith('Complex_R2.log'):
                 data_dict[identification_number].update({
                     'ComplexR2 PVDZ Energy': pvdz_energy,
                     'ComplexR2 PVTZ Energy': pvtz_energy,
