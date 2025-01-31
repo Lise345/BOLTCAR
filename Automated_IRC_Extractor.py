@@ -103,7 +103,6 @@ def SP_inputgenerator(xyzfile,filename):
     with open(filename, 'x') as ip:
         ip.writelines("%nprocshared=8\n")
         ip.writelines("%mem=16GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# opt=(calcfc,ts,noeigentest) freq {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVTZ_SP"+"\n"
@@ -119,7 +118,6 @@ def SP_inputgenerator(xyzfile,filename):
         ip.writelines("--Link1--\n")
         ip.writelines("%nprocshared=8\n")
         ip.writelines("%mem=16GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVQT_SP"+"\n"
@@ -133,7 +131,6 @@ def SP_inputgenerator(xyzfile,filename):
         ip.writelines("--Link1--\n")
         ip.writelines("%nprocshared=8\n")
         ip.writelines("%mem=16GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVQZ_SP"+"\n"
@@ -215,7 +212,6 @@ def inputgenerator(geometry, filename):
     with open(filename, 'x') as ip:
         ip.writelines("%nprocshared=8\n")
         ip.writelines("%mem=16GB\n")
-        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# opt=calcfc freq {functional} {basis_1} {dispersion} {solvent}\n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"optfreq"+"\n"
@@ -233,7 +229,6 @@ def inputgenerator(geometry, filename):
 	        ip.writelines("--Link1--\n")
 	        ip.writelines("%nprocshared=8\n")
 	        ip.writelines("%mem=16GB\n")
-	        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
 	        ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint\n")
 	        ip.writelines("\n")
 	        Title=filename[:-4]+" "+"E_ccpvtz"+"\n"
@@ -246,7 +241,6 @@ def inputgenerator(geometry, filename):
 	        ip.writelines("--Link1--\n")
 	        ip.writelines("%nprocshared=8\n")
 	        ip.writelines("%mem=16GB\n")
-	        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
 	        ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint\n")
 	        Title=filename[:-4]+" "+"E_ccpvqz"+"\n"
 	        ip.writelines("\n")
