@@ -319,8 +319,8 @@ with open('script_CREST.sub', 'w') as file:
     file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')	
     #file.write(f'crest struc.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
     file.write(f'crest coord -cregen crest_conformers.xyz -ewin 30\n')
-    #file.write(f'cp ../Automated_RMSD_INPUT.py ./\n')
-    file.write(f'./Automated_RMSD_INPUT.py\n')
+    #file.write(f'cp ../Script_1_RMSD_INPUT.py ./\n')
+    file.write(f'./Script_1_RMSD_INPUT.py\n')
     file.write('\n')
 
 
@@ -329,7 +329,7 @@ os.mkdir('CREST')
 shutil.copy('struc.xyz', 'CREST/struc.xyz')
 shutil.copy('parameters.txt', 'CREST/parameters.txt')
 shutil.copy('script_CREST.sub', 'CREST/script_CREST.sub')
-shutil.copy('Automated_RMSD_INPUT.py', 'CREST/Automated_RMSD_INPUT.py')
+shutil.copy('Script_1_RMSD_INPUT.py', 'CREST/Script_1_RMSD_INPUT.py')
 shutil.copy('constraints.inp', 'CREST/constraints.inp')
 
 # Launch calculation
