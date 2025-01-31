@@ -16,5 +16,5 @@ module load sPyRMSD/0.8.0-foss-2023a
 module load OpenBabel/3.1.1-gompi-2023a
 
 #Launching calculation
-./Automated_CREST_INPUT.py startgeom.out 
+./Automated_CREST_INPUT.py NAMEOFTHEFILE.out 
 
