@@ -4,7 +4,7 @@ import sys
 import re
 import openpyxl
 
-#-----Read parameters-----
+#-----------Loading parameters---------------
 
 with open('./parameters.txt', 'r') as parameters:
     file_content = parameters.read()
