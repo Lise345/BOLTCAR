@@ -16,7 +16,7 @@ import numpy as np
 import glob
 import pandas as pd
 
-#Part that compiles and checks if the imaginary frequency lies within the #expected range and if we have the number of expected nimag 
+#-----------Loading parameters---------------
 
 with open('./parameters.txt', 'r') as parameters:
     file_content = parameters.read()
@@ -84,6 +84,9 @@ with open('./parameters.txt', 'r') as parameters:
     atom1=CC1_in[0]
     atom2=CC1_in[1]
 
+
+#--------Check which TS's were found-------------
+
 with open("../CrestAnalysis.txt", "r") as crest:
     crestlines=crest.read()
 
@@ -103,8 +106,6 @@ def compile_frequencies(lines):
             numbers = [float(num) for num in numbers]
             frequencies= frequencies+numbers
     return frequencies
-
-#--------Check which TS's were found-------------
 
 def checkfrequency(filename):
     with open(filename, "r") as readfile:
