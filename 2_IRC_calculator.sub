@@ -17,7 +17,7 @@ cp ./Automated_IRC_Calculation.py ./CREST/TS-CREST/Automated_IRC_Calculation.py
 cp ./parameters.txt ./CREST/TS-CREST/parameters.txt
 cd CREST/
 cd TS-CREST/
-chmod 777 Automated_IRC_Calculation.py
-python Automated_IRC_Calculation.py
+chmod 777 Script_2_IRC_Calculation.py.py
+python Script_2_IRC_Calculation.py.py
 
 
