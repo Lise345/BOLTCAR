@@ -16,11 +16,11 @@ module load sPyRMSD/0.8.0-foss-2023a
 module load openpyxl/3.1.2-GCCcore-12.3.0
 
 #Launching calculation
-cp Automated_Results_CREST.py ./CREST/TS-CREST/Automated_Results_CREST.py
+cp Script_5_Results_BOLTCAR.py ./CREST/TS-CREST/Script_5_Results_BOLTCAR.py
 cd CREST/
 cd TS-CREST/
-chmod 777 Automated_Results_CREST.py
-python Automated_Results_CREST.py
+chmod 777 Script_5_Results_BOLTCAR.py
+python Script_5_Results_BOLTCAR.py
 cp ./FASTCAR_results.xlsx ../../FASTCAR_results.xlsx
 cp ./TS_analysis.xlsx ../../TS_analysis.xlsx
 
