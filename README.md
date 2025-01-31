@@ -23,7 +23,9 @@ The Parameters file is used throughout the code and will set several variables t
 --------------------------------------------------
 
 CREST version --> select CREST version
+--------------------------------------------------
 CREST solvent --> type solvent if necessary
+--------------------------------------------------
 
 --------------------------------------------------
 ------------------RMSD parameters-----------------
