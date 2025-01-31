@@ -19,7 +19,7 @@ module load openpyxl/3.1.2-GCCcore-12.3.0
 cp Automated_IRC_Extractor.py ./CREST/TS-CREST/Automated_IRC_Extractor.py
 cd CREST/
 cd TS-CREST/
-chmod 777 Automated_IRC_Extractor.py
-python Automated_IRC_Extractor.py
+chmod 777 Script_3_StationaryPoints.py
+python Script_3_StationaryPoints.py
 
 
