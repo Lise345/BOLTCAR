@@ -104,6 +104,8 @@ def compile_frequencies(lines):
             frequencies= frequencies+numbers
     return frequencies
 
+#--------Check which TS's were found-------------
+
 def checkfrequency(filename):
     with open(filename, "r") as readfile:
         lines = readfile.readlines()
@@ -150,9 +152,7 @@ print(errorterm)
 
 
 
-#Convert files to their xyz
-
-    
+#------------Convert files to their xyz--------------
 def lastgeometry(filename):
     with open(filename, "r") as readfile:
         lines = readfile.readlines()
@@ -218,8 +218,9 @@ def convert_gjf_to_xyz(filename):
         
 for file in correctTS:
     convert_gjf_to_xyz(file)
-        
 
+
+#----------------Check Energies and Rotational constants for duplicate TS's-------------------
 
 def read_coordinates(file_path):
     with open(file_path, 'r') as file:
@@ -394,24 +395,6 @@ def cleaner(correctTS):
     print("Rotational constants have been checked, BConverged is")
     print(Bconvergedlist)
     
-    #RMSD analysis --> got xyz files
-    #xyzconverged=[]
-    #for log in Bconvergedlist:
-    #    xyzcorr=log[:-4]+".xyz"
-    #    xyzconverged.append(xyzcorr)
-    
-    #print("xyzconverged is ",xyzconverged)
-    
-    #toremove=xyzlistcleaner(xyzconverged)
-
-    #print(toremove)
-
-    #RMSDcleaned=[]
-    #for el in xyzconverged:
-    #    if el not in toremove:
-    #        RMSDcleaned.append(el)
-    
-    #Compile each file
     IRClist=[]
     cleanedlogs=energycleaned+Bcleaned
     for log in cleanedlogs:
@@ -423,6 +406,9 @@ def cleaner(correctTS):
 
 
 IRClist=cleaner(correctTS)
+
+
+#-------Save all information to an Excel file------------
 
 def save_to_excel(incorrectTS, correctTS, IRClist, listfiles, crestconformers, errorterm, filename="TS_analysis.xlsx"):
     # Create a dictionary with lists to save
@@ -446,7 +432,7 @@ save_to_excel(incorrectTS, correctTS, IRClist, listfiles, crestconformers, error
 
 print("Number of IRC calculations: "+str(len(IRClist)))
 
-#IRC calculation runner
+#------------IRC calculation input and submit script--------------------
 
 def IRC_inputgenerator(xyzfile, filename, direction):
     with open(xyzfile, 'r') as file:
