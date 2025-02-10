@@ -3,6 +3,7 @@ import math
 import sys
 import re
 import openpyxl
+from openpyxl import Workbook
 
 #-----------Loading parameters---------------
 
@@ -88,7 +89,6 @@ data = []
 for column in sheet.iter_cols(values_only=True):
     data.append(list(column))
 
-print(data)
 
 listofTS=[]
 for caseofTS in data:
@@ -147,31 +147,7 @@ def SP_inputgenerator(xyzfile,filename):
 def geometryextractor(logfile):
     with open(logfile, 'r') as file:
         lines = file.readlines()
-    #convergence_indices = []
-    #for i, line in enumerate(lines):
-    #    if "Delta-x Convergence Met" in line:
-    #        convergence_indices.append(i)
-    convergence_indices = []
-    for i, line in enumerate(lines):
-        if "Input orientation" in line:
-            convergence_indices.append(i)
 
-    conv_geom=convergence_indices[-1]+5
-    
-    
-    #print("convergence found")
-    
-    #index=conv_geom
-    #found=False
-    #while found==False:
-    #    if "Number     Number" in lines[index]:
-    #        found=True
-    #        index=index+2
-    #    else:
-    #        index=index-1
-    #        continue
-    #print("geometry found ...")
-    
     geometry= []
     start=conv_geom
     index=conv_geom
@@ -303,7 +279,7 @@ def launcherstatp(logfilelist):
                     gsub.write(f'#SBATCH --time={statp_time}\n')
                     gsub.write('\n')
                     gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
-                    gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')
+                    gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')  # Temporary directory for Gaussian scratch files
                     gsub.write('mkdir -p $GAUSS_SCRDIR\n')
                     
                     # Write Gaussian job commands
@@ -323,6 +299,7 @@ def launcherstatp(logfilelist):
                     gsub.write(f'g16 < {filename1} > {output_filename1} &\n')
                     gsub.write(f'g16 < {filename2} > {output_filename2} &\n')
                     gsub.write(f'wait\n')
+                    gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
                     
                 # Submit the job
                 result = subprocess.run(
@@ -358,7 +335,7 @@ def launcherTS(xyzlist):
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
             gsub.write('\n')
             gsub.write('# Setting up Gaussian environment\n')
-            gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')  # Temporary directory for Gaussian scratch files
+            gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')  # Temporary directory for Gaussian scratch files
             gsub.write('mkdir -p $GAUSS_SCRDIR\n')
             gsub.write('#Launching calculation\n')
             gsub.write('export PATH={binfolder}:$PATH\n')
@@ -366,6 +343,7 @@ def launcherTS(xyzlist):
             SP_inputgenerator(xyzfile,filename)
             
             gsub.write(f'g16 < {filename} > {outputfilename}\n')
+            gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
             gsub.write('\n')
             gsub.close()
         
@@ -420,28 +398,32 @@ def launch_dependent_job():
     
 logfilelist=[]
 errorfiles=[]
+
 for file in os.listdir():
     if "IRC" in file and "log" in file and not "logfile" in file:
+        found = False  # Flag to track if "Point Number:   5" is found
         with open(file, 'r') as f:
-            lines = f.readlines()
-            for line in lines:
+            for line in f:
                 if "Point Number:   5" in line:
-                    logfilelist.append(file)
-                else:
-                    errorfiles.append(file)
+                    found = True
+                    break  # Stop checking further lines in this file
+        
+        if found:
+            logfilelist.append(file)  # File contains the point, add to logfilelist
+        else:
+            errorfiles.append(file)  # File does not contain the point, add to errorfiles
 
-
+# Print results
 print('LOGFILELIST:', logfilelist)
 print('ERRORFILES:', errorfiles)
 
 #-----log errors to Excel------
 
-# Add a new worksheet to log the IRC succeeded and failed cases
+workbook = Workbook()
 new_sheet_name = "IRC Results"
-if new_sheet_name in workbook.sheetnames:
-    worksheet = workbook[new_sheet_name]
-else:
-    worksheet = workbook.create_sheet(title=new_sheet_name)
+
+worksheet = workbook.active
+worksheet.title = new_sheet_name
 
 # Write headers
 worksheet.cell(row=1, column=1, value="IRC succeeded")
@@ -459,6 +441,7 @@ for i, errorfile in enumerate(errorfiles, start=2):  # Start from row 2
 workbook.save("TS_analysis.xlsx")
 print(f"IRC results tab '{new_sheet_name}' added to TS_analysis.xlsx")
 
+
 #-----Run scripts------
 
 
@@ -466,4 +449,3 @@ launcherstatp(logfilelist)
 if basis_in.lower()=='cbs':
 	launcherTS(listofTS)
 launch_dependent_job()
-
