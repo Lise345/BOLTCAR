@@ -139,5 +139,5 @@ def launcher(log_files, parameters_file, dependency_script):
 if __name__ == "__main__":
     log_files = [f for f in os.listdir("./") if f.endswith("Complex.log")]
     parameters_file = "parameters.txt"
-    dependency_script = "5_FASTCAR_results.sub"
+    dependency_script = os.path.join(rootdir, '5_FASTCAR_results.sub')
     launcher(log_files, parameters_file, dependency_script)
