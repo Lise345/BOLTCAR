@@ -75,14 +75,19 @@ def create_submission_script(job_name, input_file, output_file,sr_time):
     with open(script_name, 'w') as script:
         script.write(f"""#!/bin/sh
 #SBATCH --job-name={job_name}
-#SBATCH --ntasks=12
+#SBATCH --cpus-per-task=12
 #SBATCH --output={job_name}.logfile
 #SBATCH --time={sr_time}
+#SBATCH --partition=zen4
+#SBATCH --mem-per-cpu=5GB
 
 module load Gaussian/G16.A.03-intel-2022a
-export GAUSS_SCRDIR=$TMPDIR
-g16 < {input_file} > {output_file}
+export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID
+mkdir -p $GAUSS_SCRDIR
+g16 -p=$SLURM_CPUS_PER_TASK:-1 -m=80GB < {input_file} > {output_file}
 """)
+        script.write('rm -r ${VSC_SCRATCH_VO_USER:?}/{gauss_scrdir$SLURM_JOB_ID:?}\n')
+        script.write('\n')
     return script_name
 
 def launcher(log_files, parameters_file, dependency_script):
