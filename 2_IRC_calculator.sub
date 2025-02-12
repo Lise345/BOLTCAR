@@ -8,6 +8,9 @@
 #Defining Gaussian Parameters
 export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH
 
+#Defining Gaussian Parameters
+cd $VSC_SCRATCH/lise/13_Ondemand/Fulvenes/Fullstructure/P_CyFv/BOLTCAR
+
 #Loading modules
 module load sPyRMSD/0.8.0-foss-2023a
 module load openpyxl/3.1.2-GCCcore-12.3.0
