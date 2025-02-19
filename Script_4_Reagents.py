@@ -67,6 +67,31 @@ def write_gaussian_input(file_name, molecule, suffix):
         for atom in molecule:
             output_file.write(f" {atom[0]:<2} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
         output_file.write("\n")
+
+# Append the required "Link1" sections with the correct name
+        link1_text = f"""--Link1--
+%nprocshared=8
+%mem=16GB
+%chk={file_name}_{suffix}.chk
+# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint
+
+{file_name}_{suffix} E_ccpvtz
+
+0 1
+
+--Link1--
+%nprocshared=8
+%mem=16GB
+%chk={file_name}_{suffix}.chk
+# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint
+
+{file_name}_{suffix} E_ccpvqz
+
+0 1
+
+"""
+        output_file.write(link1_text)
+
     return output_path
 
 def create_submission_script(job_name, input_file, output_file,sr_time):
@@ -84,47 +109,52 @@ def create_submission_script(job_name, input_file, output_file,sr_time):
 module load Gaussian/G16.A.03-intel-2022a
 export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID
 mkdir -p $GAUSS_SCRDIR
-g16 -p=$SLURM_CPUS_PER_TASK:-1 -m=80GB < {input_file} > {output_file}
+g16 -p=$SLURM_CPUS_PER_TASK -m=80GB < {input_file} > {output_file}
 """)
         script.write('rm -r ${VSC_SCRATCH_VO_USER:?}/{gauss_scrdir$SLURM_JOB_ID:?}\n')
         script.write('\n')
     return script_name
 
 def launcher(log_files, parameters_file, dependency_script):
+    MAX_JOBS = 5
     """Generates Gaussian input files, submission scripts, and launches jobs."""
     molecule1_indices, molecule2_indices, sr_time = read_parameters(parameters_file)
     job_ids = []
 
-    for log_file in log_files:
-        base_name = os.path.splitext(log_file)[0]
-        extracted_atoms = extract_coordinates_from_log(log_file)
-        
-        if not extracted_atoms:
-            print(f"Skipping {log_file}: No coordinates extracted.")
-            continue
+    n=0
 
-        # Extract molecules
-        molecule1 = [extracted_atoms[i - 1] for i in molecule1_indices]
-        molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
+    while n < MAX_JOBS:
+        for log_file in log_files:
+            base_name = os.path.splitext(log_file)[0]
+            extracted_atoms = extract_coordinates_from_log(log_file)
+            
+            if not extracted_atoms:
+                print(f"Skipping {log_file}: No coordinates extracted.")
+                continue
 
-        # Write input files
-        input_R1 = write_gaussian_input(base_name, molecule1, "R1")
-        input_R2 = write_gaussian_input(base_name, molecule2, "R2")
-        
-        # Create and submit jobs
-        for suffix, input_file in zip(["R1", "R2"], [input_R1, input_R2]):
-            output_file = input_file.replace(".gjf", ".log")
-            job_name = f"{base_name}_{suffix}"
-            script_name = create_submission_script(job_name, input_file, output_file, sr_time)
+            # Extract molecules
+            molecule1 = [extracted_atoms[i - 1] for i in molecule1_indices]
+            molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
 
-            result = subprocess.run(f"sbatch {script_name}", shell=True, stdout=subprocess.PIPE, text=True)
-            if result.returncode == 0:
-                job_id = re.search(r'(\d+)', result.stdout)
-                if job_id:
-                    job_ids.append(job_id.group(1))
-                    print(f"Submitted job {job_name} with ID {job_id.group(1)}")
-            else:
-                print(f"Failed to submit job {job_name}: {result.stderr}")
+            # Write input files
+            input_R1 = write_gaussian_input(base_name, molecule1, "R1")
+            input_R2 = write_gaussian_input(base_name, molecule2, "R2")
+            
+            # Create and submit jobs
+            for suffix, input_file in zip(["R1", "R2"], [input_R1, input_R2]):
+                output_file = input_file.replace(".gjf", ".log")
+                job_name = f"{base_name}_{suffix}"
+                script_name = create_submission_script(job_name, input_file, output_file, sr_time)
+
+                result = subprocess.run(f"sbatch {script_name}", shell=True, stdout=subprocess.PIPE, text=True)
+                if result.returncode == 0:
+                    job_id = re.search(r'(\d+)', result.stdout)
+                    if job_id:
+                        job_ids.append(job_id.group(1))
+                        print(f"Submitted job {job_name} with ID {job_id.group(1)}")
+                        n+=1
+                else:
+                    print(f"Failed to submit job {job_name}: {result.stderr}")
 
     # Launch dependent script
     if job_ids:
@@ -140,9 +170,10 @@ def launcher(log_files, parameters_file, dependency_script):
     else:
         print("No jobs submitted, skipping dependent script.")
 
+
 # Main workflow
 if __name__ == "__main__":
     log_files = [f for f in os.listdir("./") if f.endswith("Complex.log")]
     parameters_file = "parameters.txt"
-    dependency_script = os.path.join(rootdir, '5_FASTCAR_results.sub')
+    dependency_script = "5_FASTCAR_results.sub"
     launcher(log_files, parameters_file, dependency_script)
