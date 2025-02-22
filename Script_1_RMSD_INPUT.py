@@ -29,6 +29,7 @@ with open('../parameters.txt', 'r') as parameters:
     atom2_index = re.search(r'atom2\s*=\s*(\S+)', file_content)
     atom2_index = int(atom2_index.group(1)) - 1  # Adjust for zero-based indexing
 
+
     experience_number = re.search(r'Experience name (.+)', file_content)
     experience_number = experience_number.group(1)
 
@@ -126,7 +127,7 @@ def process_file(file_path):
     atom2_coords = np.array(atoms[atom2_index][1:])
     vector = atom2_coords - atom1_coords
     distance = np.linalg.norm(vector)
-    translation_vector = vector / distance * 0.4
+    translation_vector = vector / distance * 0
     
     print(f"Translation vector: {translation_vector}")
     
@@ -184,21 +185,28 @@ if ' CREST terminated normally.' in last_line:
         log.write('CREST completed\n')
 
     os.chdir('./TS-CREST')
-
-    for file_path in glob.glob('./*.xyz'):
-        print(f"Processing file: {file_path}")
-        process_file(file_path)
+    print(f"Current directory: {os.getcwd()}")  # Debugging output
+    dirs = os.listdir()
+    print(f"Files found: {dirs}")  # Check the listed files
 
     XYZspliter()
 
+    xyz_files = [f for f in glob.glob('./*.xyz') if "xyzfilenum" in f]
+
+
+    for file_path in xyz_files:
+        print(f"Processing file: {file_path}")
+        process_file(file_path)
+
     dirs = os.listdir()
-    xyzlist = [ele for ele in dirs if ".xyz" in ele and "num" in ele]
+    xyzlist = [ele for ele in dirs if "newgeom.xyz" in ele and "num" in ele]
     ordxyzlist = sorted(xyzlist)
 
     n = 1
     MAX_JOBS = 10
-    MAX_SUB_FILES = 50  # Maximum number of .sub files allowed
+    MAX_SUB_FILES = 5  # Maximum number of .sub files allowed
     listn = ordxyzlist[:]
+    print("Files that are used to create TS calculations)
     print(listn)
     
     inp_file_job_ids = []
@@ -232,18 +240,19 @@ if ' CREST terminated normally.' in last_line:
             gsub.write(f'#SBATCH --job-name={base_name}_{experience_number}-{match}\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output={base_name}_{experience_number}-{match}.logfile\n')
-            gsub.write(f''#SBATCH --time={TS_time}\n')
+            gsub.write(f'#SBATCH --time={TS_time}\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
             gsub.write('\n')
             gsub.write('# Setting up Gaussian environment\n')
-            gsub.write('export GAUSS_SCRDIR=$TMPDIR\n')  # Temporary directory for Gaussian scratch files
+            gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')  
             gsub.write('mkdir -p $GAUSS_SCRDIR\n')
             gsub.write('#Launching calculation\n')
             gsub.write('export PATH={binfolder}:$PATH\n')
             gsub.write('dos2unix input_{experience_number}-{match}.inp\n')
             gsub.write(f'g16 < input_{experience_number}-{match}.inp > {base_name}_{experience_number}-{match}.log\n')
+            gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
             gsub.write('\n')
     
         sbatch_command = f"sbatch {base_name}_{experience_number}-{match}g16.sub"
