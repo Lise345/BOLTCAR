@@ -2,6 +2,7 @@ import os
 import re
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 #with open('./parameters.txt', 'r') as parameters:
@@ -208,4 +209,50 @@ print("Data extraction complete. The results are saved in 'FASTCAR_results.xlsx'
 if (df['Complex Energy'] > 1).all():
     min_ts_energy_row = df.loc[df['TS Energy'].idxmin()]
     print(f"No stable Complexes found, the path of the lowest transition state energy will be followed, being {min_ts_energy_row['ID Number']}.")
+
+# Filter the data to include only rows where Pi Value is greater than 0
+df_filtered = df[df['Pi Value'] > 0]
+
+# Ensure the directory for saving plots exists
+output_dir = "plots"
+os.makedirs(output_dir, exist_ok=True)
+
+# Plot and save Complex Energy
+plt.figure(figsize=(10, 5))
+plt.scatter(df_filtered['ID Number'], df_filtered['Complex Energy'], color='b', label='Complex Energy')
+plt.xlabel('ID Number')
+plt.ylabel('Energy (kcal/mol)')
+plt.title('Complex Energies for ID Numbers with Pi > 0')
+plt.xticks(rotation=90)
+plt.legend()
+plt.grid()
+plt.savefig(os.path.join(output_dir, "complex_energies.png"), dpi=300, bbox_inches='tight')
+plt.close()
+
+# Plot and save TS Energy
+plt.figure(figsize=(10, 5))
+plt.scatter(df_filtered['ID Number'], df_filtered['TS Energy'], color='r', label='TS Energy')
+plt.xlabel('ID Number')
+plt.ylabel('Energy (kcal/mol)')
+plt.title('Transition State Energies for ID Numbers with Pi > 0')
+plt.xticks(rotation=90)
+plt.legend()
+plt.grid()
+plt.savefig(os.path.join(output_dir, "ts_energies.png"), dpi=300, bbox_inches='tight')
+plt.close()
+
+# Plot and save Product Energy
+plt.figure(figsize=(10, 5))
+plt.scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color='g', label='Product Energy')
+plt.xlabel('ID Number')
+plt.ylabel('Energy (kcal/mol)')
+plt.title('Product Energies for ID Numbers with Pi > 0')
+plt.xticks(rotation=90)
+plt.legend()
+plt.grid()
+plt.savefig(os.path.join(output_dir, "product_energies.png"), dpi=300, bbox_inches='tight')
+plt.close()
+
+print(f"Plots saved in '{output_dir}' directory.")
+
 
