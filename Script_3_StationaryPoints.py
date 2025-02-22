@@ -3,7 +3,7 @@ import math
 import sys
 import re
 import openpyxl
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 #-----------Loading parameters---------------
 
@@ -119,7 +119,7 @@ def SP_inputgenerator(xyzfile,filename):
         ip.writelines("--Link1--\n")
         ip.writelines("%nprocshared=8\n")
         ip.writelines("%mem=16GB\n")
-	ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
+        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVQT_SP"+"\n"
@@ -133,7 +133,7 @@ def SP_inputgenerator(xyzfile,filename):
         ip.writelines("--Link1--\n")
         ip.writelines("%nprocshared=8\n")
         ip.writelines("%mem=16GB\n")
-	ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
+        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
         ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint \n")
         ip.writelines("\n")
         Title=filename[:-4]+" "+"cc-pVQZ_SP"+"\n"
@@ -209,7 +209,7 @@ def inputgenerator(geometry, filename):
 	        ip.writelines("--Link1--\n")
 	        ip.writelines("%nprocshared=8\n")
 	        ip.writelines("%mem=16GB\n")
-		ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
+	        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
 	        ip.writelines(f"# {functional} {basis_2} {dispersion} {solvent} Geom=Checkpoint\n")
 	        ip.writelines("\n")
 	        Title=filename[:-4]+" "+"E_ccpvtz"+"\n"
@@ -222,7 +222,7 @@ def inputgenerator(geometry, filename):
 	        ip.writelines("--Link1--\n")
 	        ip.writelines("%nprocshared=8\n")
 	        ip.writelines("%mem=16GB\n")
-		ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
+	        ip.writelines("%chk="+filename[:-4]+".chk"+"\n")
 	        ip.writelines(f"# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint\n")
 	        Title=filename[:-4]+" "+"E_ccpvqz"+"\n"
 	        ip.writelines("\n")
@@ -423,11 +423,23 @@ print('ERRORFILES:', errorfiles)
 
 #-----log errors to Excel------
 
-workbook = Workbook()
+file_path = "TS_analysis.xlsx"
 new_sheet_name = "IRC Results"
 
-worksheet = workbook.active
-worksheet.title = new_sheet_name
+try:
+    # Load existing workbook
+    workbook = load_workbook(file_path)
+except FileNotFoundError:
+    # If the file does not exist, create a new workbook
+    from openpyxl import Workbook
+    workbook = Workbook()
+
+# Check if the sheet already exists and remove it (optional)
+if new_sheet_name in workbook.sheetnames:
+    del workbook[new_sheet_name]  # Deletes the existing sheet
+
+# Add a new sheet
+worksheet = workbook.create_sheet(title=new_sheet_name)
 
 # Write headers
 worksheet.cell(row=1, column=1, value="IRC succeeded")
@@ -442,14 +454,14 @@ for i, errorfile in enumerate(errorfiles, start=2):  # Start from row 2
     worksheet.cell(row=i, column=2, value=errorfile)
 
 # Save changes to the Excel file
-workbook.save("TS_analysis.xlsx")
-print(f"IRC results tab '{new_sheet_name}' added to TS_analysis.xlsx")
+workbook.save(file_path)
+print(f"IRC results tab '{new_sheet_name}' added to {file_path}")
 
 
 #-----Run scripts------
 
 
-launcherstatp(logfilelist)
+#launcherstatp(logfilelist)
 if basis_in.lower()=='cbs':
 	launcherTS(listofTS)
-launch_dependent_job()
+#launch_dependent_job()
