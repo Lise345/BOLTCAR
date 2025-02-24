@@ -150,6 +150,13 @@ def geometryextractor(logfile):
     with open(logfile, 'r') as file:
         lines = file.readlines()
 
+    convergence_indices=[] 
+    for i,line in enumerate(lines):
+        if "Input orientation" in line:
+             convergence_indices.append(i)
+
+    conv_geom=convergence_indices[-1]+5
+
     geometry= []
     start=conv_geom
     index=conv_geom
