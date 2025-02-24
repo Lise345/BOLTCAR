@@ -241,16 +241,16 @@ plt.grid()
 plt.savefig(os.path.join(output_dir, "ts_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
-# Plot and save Product Energy
+# Plot 4: Percentage Plot
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color='g', label='Product Energy')
+plt.scatter(df_filtered['ID Number'], df_filtered['Percentage'], color='y', label='Percentage')
 plt.xlabel('ID Number')
-plt.ylabel('Energy (kcal/mol)')
-plt.title('Product Energies for ID Numbers with Pi > 0')
+plt.ylabel('Percentage')
+plt.title('Percentage for ID Numbers with Pi > 0')
 plt.xticks(rotation=90)
 plt.legend()
 plt.grid()
-plt.savefig(os.path.join(output_dir, "product_energies.png"), dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(output_dir, "percentages.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
 print(f"Plots saved in '{output_dir}' directory.")
