@@ -43,8 +43,8 @@ def read_parameters(file_path):
 
     time_sr = re.search(r'Time for Separate Reagent calcs\s+(\d+)', file_content)
     if time_sr:
-        time_for_sr_calcs = int(time_irc.group(1))
-        irc_time = f'{time_for_sr_calcs}:00:00'  # Format to HH:MM:SS
+        time_for_sr_calcs = int(time_sr.group(1))
+        sr_time = f'{time_for_sr_calcs}:00:00'  # Format to HH:MM:SS
     else:
         sr_time = '25:00:00'  # Default value if not found
         print("Time for stationary calculations not found, defaulting to 25:00:00")
