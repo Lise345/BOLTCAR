@@ -41,6 +41,9 @@ def read_parameters(file_path):
     molecule1_atoms = list(map(int, re.search(r'molecule1_atoms\s*=\s*(.+)', file_content).group(1).split()))
     molecule2_atoms = list(map(int, re.search(r'molecule2_atoms\s*=\s*(.+)', file_content).group(1).split()))
 
+    rootdir_match = re.search(r'rootdir\s+(.+)', file_content)
+    rootdir = rootdir_match.group(1).strip().strip("'\"")
+    
     time_sr = re.search(r'Time for Separate Reagent calcs\s+(\d+)', file_content)
     if time_sr:
         time_for_sr_calcs = int(time_sr.group(1))
@@ -175,6 +178,6 @@ def launcher(log_files, parameters_file, dependency_script):
 if __name__ == "__main__":
     log_files = [f for f in os.listdir("./") if f.endswith("Complex.log")]
     parameters_file = "parameters.txt"
-    dependency_script = "5_FASTCAR_results.sub"
+    dependency_script = os.path.join(rootdir, '5_BOLTCAR_Results.sub')
     launcher(log_files, parameters_file, dependency_script)
 
