@@ -2,11 +2,18 @@
 #SBATCH --job-name=FastcarResults
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=FastcarResults.logfile
+#SBATCH --output=5FastcarResults.logfile
 #SBATCH --time=01:00:00
 
-#Opening correct folder
-cd $VSC_SCRATCH/lise/17_Baproeven/Killian/FASTCAR/BOLTCAR
+#Defining Folders
+cd $VSC_SCRATCH/lise/13_Ondemand/Fulvenes/Fullstructure/P_FvFv/BOLTCAR_FvFv_Endo1
+
+MAIN_DIR="$VSC_SCRATCH/lise/13_Ondemand/Fulvenes/Fullstructure/P_FvFv/BOLTCAR_FvFv_Endo1"
+
+TS_CREST_DIR="$MAIN_DIR/CREST/TS-CREST"
+
+RESULTS_DIR="$MAIN_DIR/Results"
+
 
 #Defining Gaussian Parameters
 export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH
@@ -17,11 +24,24 @@ module load openpyxl/3.1.2-GCCcore-12.3.0
 module load matplotlib/3.7.2-gfbf-2023a
 
 #Launching calculation
-cp Script_5_Results_BOLTCAR.py ./CREST/TS-CREST/Script_5_Results_BOLTCAR.py
+cp Automated_Results_CREST.py ./CREST/TS-CREST/Automated_Results_CREST.py
+mkdir -p Results
+mkdir -p Results/inputs
+mkdir -p Results/outputs
+mkdir -p Results/submits
 cd CREST/
 cd TS-CREST/
 chmod 777 Script_5_Results_BOLTCAR.py
 python Script_5_Results_BOLTCAR.py
-cp ./FASTCAR_results.xlsx ../../FASTCAR_results.xlsx
-cp ./TS_analysis.xlsx ../../TS_analysis.xlsx
+cp ./FASTCAR_results.xlsx ../../Results/FASTCAR_results.xlsx
+cp ./TS_analysis.xlsx ../../Results/TS_analysis.xlsx
+
+cd ../..
+
+cp $TS_CREST_DIR/*.log $RESULTS_DIR/outputs
+cp $TS_CREST_DIR/*.logfile $RESULTS_DIR/outputs
+cp $TS_CREST_DIR/*.gjf $RESULTS_DIR/inputs
+cp $TS_CREST_DIR/*.sub $RESULTS_DIR/submits
+Cp -r $TS_CREST_DIR/plots $RESULTS_DIR/
+
 
