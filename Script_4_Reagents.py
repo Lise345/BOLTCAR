@@ -119,7 +119,7 @@ g16 -p=$SLURM_CPUS_PER_TASK -m=80GB < {input_file} > {output_file}
     return script_name
 
 def launcher(log_files, parameters_file, dependency_script):
-    MAX_JOBS = 5
+    MAX_JOBS = 100
     """Generates Gaussian input files, submission scripts, and launches jobs."""
     molecule1_indices, molecule2_indices, sr_time = read_parameters(parameters_file)
     job_ids = []
