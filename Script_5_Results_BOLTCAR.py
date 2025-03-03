@@ -23,33 +23,43 @@ def read_parameters(file_path):
     return basis_1
 
 def extract_values(file_path):
-    pvdz_energy = None
-    pvtz_energy = None
-    pvqz_energy = None
-    gibbs_free_energy = None
-
+    pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = None, None, None, None
     last_scf_done = None
 
     with open(file_path, 'r') as file:
         lines = file.readlines()
         for i, line in enumerate(lines):
             if 'Error termination via Lnk1e' in line:
-                return None, None, None, None  # Discard the file if it contains the error message
+                return "Calculation failed", "Calculation failed", "Calculation failed", "Calculation failed"  # Discard the file
+            
             if 'SCF Done:  E(RM062X) =' in line:
                 match = re.search(r'SCF Done:  E\(RM062X\) =\s+(-?\d+\.\d+)', line)
                 if match:
                     last_scf_done = float(match.group(1))
-            if '-------------------------------------------------------' in line and i + 1 < len(lines) and '# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
-                pvdz_energy = last_scf_done
-            if '-------------------------------------------------------' in line and i + 1 < len(lines) and '# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
-                pvtz_energy = last_scf_done
+
+            if i + 1 < len(lines):
+                if '# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
+                    pvdz_energy = last_scf_done
+                elif '# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
+                    pvtz_energy = last_scf_done
+
             if 'Thermal correction to Gibbs Free Energy=' in line:
-                gibbs_free_energy = float(line.split()[-1])
+                try:
+                    gibbs_free_energy = float(line.split()[-1])
+                except ValueError:
+                    gibbs_free_energy = None
 
-        # Assign the last SCF Done value to pvqz_energy
-        pvqz_energy = last_scf_done
+        # Ensure last SCF value is only assigned if valid
+        if last_scf_done is not None:
+            pvqz_energy = last_scf_done
 
+    # If no valid values were found, return "Calculation failed"
+    if all(value is None for value in [pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy]):
+        return "Calculation failed", "Calculation failed", "Calculation failed", "Calculation failed"
+    
     return pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy
+
+
 
 # Read basis_1 from parameters.txt
 parameters_file = 'parameters.txt'
@@ -174,20 +184,43 @@ df['TS Energy'] = 627.5 * (df['Extrapolated TS Energy'] + df['TS Gibbs Correctio
 df['Product Energy'] = 627.5 * (df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] - df['energy_of_separate_reagents'])
 
 # Ensure 'Complex Energy' is numeric and handle NaN or non-numeric values
-df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce').fillna(0)
+df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce')
 df['TS Energy'] = pd.to_numeric(df['TS Energy'], errors='coerce').fillna(0)
 df['Product Energy'] = pd.to_numeric(df['Product Energy'], errors='coerce').fillna(0)
 
-# Calculate Pi Value, Percentage, and Rate Constant
+# Ensure empty strings are converted to NaN
+df.replace('', np.nan, inplace=True)
+
+# List of required energy columns for Pi calculation
+required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy']
+
+# Set Complex Energy to NaN if any required energy value is missing
+df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
+
+# Compute Pi Value numerically where all values exist
 df['Pi Value'] = np.exp(-df['Complex Energy'] / (0.001987204259 * 298.15))
-df.loc[df['Complex Energy'] > 1, 'Pi Value'] = 0  # Set Pi Value to 0 if Complex Energy is larger than 1
+
+# Ensure Pi Value is zero if Complex Energy > 1
+df.loc[df['Complex Energy'] > 1, 'Pi Value'] = 0
+
+# Create a separate column for display in Excel
+df['Pi Value Display'] = df['Pi Value']
+
+# Replace NaN values with "Calculation failed" ONLY in the Excel output column
+df['Pi Value Display'] = df['Pi Value Display'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
+
+
+
+
 
 # Handle Pi Value sums safely
-pi_sum = df['Pi Value'].sum()
+pi_sum = df['Pi Value'].sum(skipna=True) 
+
 if pi_sum == 0:  # Avoid division by zero
     df['Percentage'] = 0
 else:
-    df['Percentage'] = df['Pi Value'] / pi_sum
+    df['Percentage'] = df['Pi Value'].apply(lambda x: x / pi_sum if pd.notna(x) else 0)
+
 
 # Calculate Rate Constant
 df['Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy'] - df['Complex Energy']) * 1000 * 4.184 / (8.314 * 298.15))
@@ -201,7 +234,8 @@ if (df['Complex Energy'] > 1).all():
     print(f"No stable complexes found, we assume the reaction will be the one with the lowest barrier, being {min_ts_energy_row['ID Number']}.")
 
 # Save results
-df.to_excel('FASTCAR_results.xlsx', index=False)
+df.to_excel('FASTCAR_results.xlsx', index=False, columns=[col if col != 'Pi Value' else 'Pi Value Display' for col in df.columns])
+
 
 print("Data extraction complete. The results are saved in 'FASTCAR_results.xlsx'.")
 
@@ -210,8 +244,26 @@ if (df['Complex Energy'] > 1).all():
     min_ts_energy_row = df.loc[df['TS Energy'].idxmin()]
     print(f"No stable Complexes found, the path of the lowest transition state energy will be followed, being {min_ts_energy_row['ID Number']}.")
 
-# Filter the data to include only rows where Pi Value is greater than 0
-df_filtered = df[df['Pi Value'] > 0]
+
+
+
+# Convert Pi Value to numeric where possible (ignoring "Calculation failed")
+df['Pi Value Numeric'] = pd.to_numeric(df['Pi Value'], errors='coerce')
+
+# Check if there are any positive Pi Values
+has_positive_pi = (df['Pi Value Numeric'] > 0).any()
+
+# If there are positive Pi Values, filter for them; otherwise, use all IDs
+if has_positive_pi:
+    df_filtered = df[df['Pi Value Numeric'] > 0]
+else:
+    df_filtered = df  # Use all IDs if no positive Pi Values exist
+
+# Ensure valid numeric values before plotting
+df_filtered = df_filtered.dropna(subset=['Complex Energy', 'TS Energy', 'Product Energy'])
+
+
+
 
 # Ensure the directory for saving plots exists
 output_dir = "plots"
@@ -241,16 +293,16 @@ plt.grid()
 plt.savefig(os.path.join(output_dir, "ts_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
-# Plot 4: Percentage Plot
+# Plot and save Product Energy
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Percentage'], color='y', label='Percentage')
+plt.scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color='g', label='Product Energy')
 plt.xlabel('ID Number')
-plt.ylabel('Percentage')
-plt.title('Percentage for ID Numbers with Pi > 0')
+plt.ylabel('Energy (kcal/mol)')
+plt.title('Product Energies for ID Numbers with Pi > 0')
 plt.xticks(rotation=90)
 plt.legend()
 plt.grid()
-plt.savefig(os.path.join(output_dir, "percentages.png"), dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(output_dir, "product_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
 print(f"Plots saved in '{output_dir}' directory.")
