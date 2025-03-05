@@ -26,38 +26,58 @@ def extract_values(file_path):
     pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = None, None, None, None
     last_scf_done = None
 
+    found_pvdz, found_pvtz, found_pvqz = False, False, False  # Track section existence
+
+    print(f"Processing file: {file_path}")
+
     with open(file_path, 'r') as file:
         lines = file.readlines()
-        for i, line in enumerate(lines):
+        for line in lines:
             if 'Error termination via Lnk1e' in line:
-                return "Calculation failed", "Calculation failed", "Calculation failed", "Calculation failed"  # Discard the file
+                return np.nan, np.nan, np.nan, np.nan  # Mark calculation as failed
             
             if 'SCF Done:  E(RM062X) =' in line:
                 match = re.search(r'SCF Done:  E\(RM062X\) =\s+(-?\d+\.\d+)', line)
                 if match:
-                    last_scf_done = float(match.group(1))
+                    last_scf_done = float(match.group(1))  # Always keep last SCF value
 
-            if i + 1 < len(lines):
-                if '# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
-                    pvdz_energy = last_scf_done
-                elif '# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint' in lines[i + 1]:
-                    pvtz_energy = last_scf_done
+                    # Assign SCF Done value only if we are in the correct section
+                    if found_pvdz and pvdz_energy is None:
+                        pvdz_energy = last_scf_done
+                    if found_pvtz and pvtz_energy is None:
+                        pvtz_energy = last_scf_done
+                    if found_pvqz and pvqz_energy is None:
+                        pvqz_energy = last_scf_done
+
+            # Detect basis set sections
+            if 'm062x cc-pvdz' in line:
+                found_pvdz = True
+            if 'm062x cc-pvtz' in line:
+                found_pvtz = True
+            if 'm062x cc-pvqz' in line:
+                found_pvqz = True
 
             if 'Thermal correction to Gibbs Free Energy=' in line:
                 try:
                     gibbs_free_energy = float(line.split()[-1])
                 except ValueError:
-                    gibbs_free_energy = None
+                    gibbs_free_energy = np.nan
 
-        # Ensure last SCF value is only assigned if valid
-        if last_scf_done is not None:
-            pvqz_energy = last_scf_done
+    # Ensure missing values are explicitly marked as NaN if a section was never found
+    if not found_pvdz:
+        pvdz_energy = None
+    if not found_pvtz:
+        pvtz_energy = None
+    if not found_pvqz:
+        pvqz_energy = None
+    if gibbs_free_energy is None:
+        gibbs_free_energy = None
 
-    # If no valid values were found, return "Calculation failed"
-    if all(value is None for value in [pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy]):
-        return "Calculation failed", "Calculation failed", "Calculation failed", "Calculation failed"
-    
+    print(f"Final extracted values for {file_path}:")
+    print(f"PVDZ: {pvdz_energy}, PVTZ: {pvtz_energy}, PVQZ: {pvqz_energy}, Gibbs Free Energy: {gibbs_free_energy}")
+
     return pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy
+
 
 
 
@@ -188,27 +208,23 @@ df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce')
 df['TS Energy'] = pd.to_numeric(df['TS Energy'], errors='coerce').fillna(0)
 df['Product Energy'] = pd.to_numeric(df['Product Energy'], errors='coerce').fillna(0)
 
+
+
+
 # Ensure empty strings are converted to NaN
 df.replace('', np.nan, inplace=True)
-
 # List of required energy columns for Pi calculation
 required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy']
-
 # Set Complex Energy to NaN if any required energy value is missing
 df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
-
 # Compute Pi Value numerically where all values exist
 df['Pi Value'] = np.exp(-df['Complex Energy'] / (0.001987204259 * 298.15))
-
 # Ensure Pi Value is zero if Complex Energy > 1
 df.loc[df['Complex Energy'] > 1, 'Pi Value'] = 0
-
 # Create a separate column for display in Excel
 df['Pi Value Display'] = df['Pi Value']
-
 # Replace NaN values with "Calculation failed" ONLY in the Excel output column
 df['Pi Value Display'] = df['Pi Value Display'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
-
 
 
 
@@ -223,7 +239,7 @@ else:
 
 
 # Calculate Rate Constant
-df['Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy'] - df['Complex Energy']) * 1000 * 4.184 / (8.314 * 298.15))
+df['Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy']) * 1000 * 4.184 / (8.314 * 298.15))
 
 # Sort by identification number
 df = df.sort_values(by='ID Number')
@@ -303,6 +319,18 @@ plt.xticks(rotation=90)
 plt.legend()
 plt.grid()
 plt.savefig(os.path.join(output_dir, "product_energies.png"), dpi=300, bbox_inches='tight')
+plt.close()
+
+# Plot and save Percentages
+plt.figure(figsize=(10, 5))
+plt.scatter(df_filtered['ID Number'], df_filtered['Percentage']*100, color='y', label='Percentages')
+plt.xlabel('ID Number')
+plt.ylabel('Energy (kcal/mol)')
+plt.title('Product Energies for ID Numbers with Pi > 0')
+plt.xticks(rotation=90)
+plt.legend()
+plt.grid()
+plt.savefig(os.path.join(output_dir, "percentages.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
 print(f"Plots saved in '{output_dir}' directory.")
