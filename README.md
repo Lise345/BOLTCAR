@@ -4,7 +4,7 @@ This code serves to analyse reactions of structures with flexible side chains. B
 
 # IMPORTANT
 
-Check all submit scripts (.sub) as you will have to make changes to select your path, as well as the parameters.txt file.
+Check all submit scripts (.sub) as you will have to make changes to select your paths, as well as the parameters.txt file. Moreover, check the python codes (.py) to make sure the Gaussian calculation folders are created in the right folder.
 
 # NAMEOFTHEFILE.out
 
