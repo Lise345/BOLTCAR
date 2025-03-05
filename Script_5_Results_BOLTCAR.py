@@ -214,7 +214,8 @@ df['Product Energy'] = pd.to_numeric(df['Product Energy'], errors='coerce').fill
 # Ensure empty strings are converted to NaN
 df.replace('', np.nan, inplace=True)
 # List of required energy columns for Pi calculation
-required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy']
+# List of required energy columns for Pi calculation
+required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy', 'TS PVDZ Energy', 'TS PVTZ Energy', 'TS PVQZ Energy', 'Product PVDZ Energy, 'Product PVTZ Energy', 'Product PVQZ Energy']
 # Set Complex Energy to NaN if any required energy value is missing
 df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
 # Compute Pi Value numerically where all values exist
@@ -325,7 +326,7 @@ plt.close()
 plt.figure(figsize=(10, 5))
 plt.scatter(df_filtered['ID Number'], df_filtered['Percentage']*100, color='y', label='Percentages')
 plt.xlabel('ID Number')
-plt.ylabel('Energy (kcal/mol)')
+plt.ylabel('Percentage (%)')
 plt.title('Product Energies for ID Numbers with Pi > 0')
 plt.xticks(rotation=90)
 plt.legend()
