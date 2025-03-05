@@ -42,6 +42,6 @@ cp $TS_CREST_DIR/*.log $RESULTS_DIR/outputs
 cp $TS_CREST_DIR/*.logfile $RESULTS_DIR/outputs
 cp $TS_CREST_DIR/*.gjf $RESULTS_DIR/inputs
 cp $TS_CREST_DIR/*.sub $RESULTS_DIR/submits
-Cp -r $TS_CREST_DIR/plots $RESULTS_DIR/
+cp -r $TS_CREST_DIR/plots $RESULTS_DIR/
 
 
