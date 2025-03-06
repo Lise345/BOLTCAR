@@ -268,11 +268,20 @@ import subprocess
 
 inp_file_job_ids = []
 
+def jobid(filename):
+    match = re.findall(r"(\d+)", filename) #Finds all sequences of numbers
+    if match:
+        for group in match:
+            if len(group)==4: #if sequence of numbers is 4 units long then return that as the jobid; unlikely that in name a sequence of 4 numbers would be added
+                numbers=group
+    return numbers
+
 def launcherstatp(logfilelist):
     for i, logfile1 in enumerate(logfilelist):
-        number = logfile1[17:21]
+        number1 = jobid(logfile1)
         for j, logfile2 in enumerate(logfilelist):
-            if number in logfile2 and logfile1 != logfile2 and j > i:
+	    number2 = jobid(logfile2)
+            if number1==number2  and logfile1 != logfile2 and j > i:
                 geometry1 = geometryextractor(logfile1)
                 updated_geometry1 = geometryconverter(geometry1)
                 distance1_CC1 = distance(updated_geometry1, CC1)
