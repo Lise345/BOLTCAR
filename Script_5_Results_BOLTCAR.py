@@ -22,6 +22,8 @@ def read_parameters(file_path):
         basis_1 = None
     return basis_1
 
+
+
 def extract_values(file_path):
     pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = None, None, None, None
     last_scf_done = None
@@ -81,6 +83,7 @@ def extract_values(file_path):
 
 
 
+
 # Read basis_1 from parameters.txt
 parameters_file = 'parameters.txt'
 if not os.path.exists(parameters_file):
@@ -95,7 +98,11 @@ for filename in os.listdir(directory):
     if filename.startswith('ccpvdz_startgeom-') and (filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log')):
         identification_number = filename.split('-')[1].split('_')[0]
         file_path = os.path.join(directory, filename)
+        
         pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = extract_values(file_path)
+        
+        print(f"{identification_number} gives")
+        print(f"{pvdz_energy} {pvtz_energy} {pvqz_energy}")
         
         if pvdz_energy is None and pvtz_energy is None and pvqz_energy is None and gibbs_free_energy is None:
             continue  # Skip files that contain the error message
@@ -167,6 +174,7 @@ df = pd.DataFrame.from_dict(data_dict, orient='index')
 
 
 
+
 if use_cbs_logic:
     df['Extrapolated Complex Energy'] = (
         (df['Complex PVDZ Energy'] * df['Complex PVQZ Energy'] - df['Complex PVTZ Energy']**2)
@@ -209,23 +217,24 @@ df['TS Energy'] = pd.to_numeric(df['TS Energy'], errors='coerce').fillna(0)
 df['Product Energy'] = pd.to_numeric(df['Product Energy'], errors='coerce').fillna(0)
 
 
-
-
-# Ensure empty strings are converted to NaN
-df.replace('', np.nan, inplace=True)
 # List of required energy columns for Pi calculation
-# List of required energy columns for Pi calculation
-required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy', 'TS PVDZ Energy', 'TS PVTZ Energy', 'TS PVQZ Energy', 'Product PVDZ Energy, 'Product PVTZ Energy', 'Product PVQZ Energy']
+required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy', 'TS PVDZ Energy', 'TS PVTZ Energy', 'TS PVQZ Energy', 'Product PVDZ Energy', 'Product PVTZ Energy', 'Product PVQZ Energy']
+
 # Set Complex Energy to NaN if any required energy value is missing
 df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
+
 # Compute Pi Value numerically where all values exist
 df['Pi Value'] = np.exp(-df['Complex Energy'] / (0.001987204259 * 298.15))
+
 # Ensure Pi Value is zero if Complex Energy > 1
 df.loc[df['Complex Energy'] > 1, 'Pi Value'] = 0
+
 # Create a separate column for display in Excel
 df['Pi Value Display'] = df['Pi Value']
+
 # Replace NaN values with "Calculation failed" ONLY in the Excel output column
 df['Pi Value Display'] = df['Pi Value Display'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
+
 
 
 
@@ -335,5 +344,4 @@ plt.savefig(os.path.join(output_dir, "percentages.png"), dpi=300, bbox_inches='t
 plt.close()
 
 print(f"Plots saved in '{output_dir}' directory.")
-
 
