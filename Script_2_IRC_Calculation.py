@@ -141,6 +141,18 @@ errorterm=[]
 for file in listfiles:
     checkfrequency(file)
 
+def jobid(filename):
+    match = re.findall(r"(\d+)", filename) #Finds all sequences of numbers
+    if match:
+        for group in match:
+            if len(group)==4: #if sequence of numbers is 4 units long then return that as the jobid; unlikely that in name a sequence of 4 numbers would be added
+                numbers=group
+    return numbers
+
+incorrectTS = sorted(incorrectTS, key=jobid)
+correctTS = sorted(correctTS, key=jobid)
+errorterm = sorted(errorterm, key=jobid)
+
 print("The correct TS are")
 print(correctTS)
 
@@ -150,8 +162,6 @@ print(incorrectTS)
 
 print("The error TS are")
 print(errorterm)
-
-
 
 #------------Convert files to their xyz--------------
 def lastgeometry(filename):
