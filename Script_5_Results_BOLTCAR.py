@@ -81,8 +81,13 @@ def extract_values(file_path):
     return pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy
 
 
-
-
+def jobid(filename):
+    match = re.findall(r"(\d+)", filename) #Finds all sequences of numbers
+    if match:
+        for group in match:
+            if len(group)==4: #if sequence of numbers is 4 units long then return that as the jobid; unlikely that in name a sequence of 4 numbers would be added
+                numbers=group
+    return numbers
 
 # Read basis_1 from parameters.txt
 parameters_file = 'parameters.txt'
@@ -96,7 +101,7 @@ data_dict = {}
 
 for filename in os.listdir(directory):
     if filename.startswith('ccpvdz_startgeom-') and (filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log')):
-        identification_number = filename.split('-')[1].split('_')[0]
+        identification_number = jobid(filename)
         file_path = os.path.join(directory, filename)
         
         pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = extract_values(file_path)
@@ -206,10 +211,11 @@ else:
     df['Extrapolated Product Energy'] = df[product_basis_energy_label]
 
 df['energy_of_separate_reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
+df['Minimal energy_of_separate_reagents'] = df['energy_of_separate_reagents'].min()
 
-df['Complex Energy'] = 627.5 * (df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] - df['energy_of_separate_reagents'])
-df['TS Energy'] = 627.5 * (df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] - df['energy_of_separate_reagents'])
-df['Product Energy'] = 627.5 * (df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] - df['energy_of_separate_reagents'])
+df['Complex Energy'] = 627.5 * (df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] - df['Minimal energy_of_separate_reagents'])
+df['TS Energy'] = 627.5 * (df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] - df['Minimal energy_of_separate_reagents'])
+df['Product Energy'] = 627.5 * (df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] - df['Minimal energy_of_separate_reagents'])
 
 # Ensure 'Complex Energy' is numeric and handle NaN or non-numeric values
 df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce')
