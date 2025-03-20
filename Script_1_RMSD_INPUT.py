@@ -203,8 +203,8 @@ if ' CREST terminated normally.' in last_line:
     ordxyzlist = sorted(xyzlist)
 
     n = 1
-    MAX_JOBS = 10
-    MAX_SUB_FILES = 5  # Maximum number of .sub files allowed
+    MAX_JOBS = 50
+    MAX_SUB_FILES = 50  # Maximum number of .sub files allowed
     listn = ordxyzlist[:]
     print("Files that are used to create TS calculations)
     print(listn)
