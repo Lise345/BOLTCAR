@@ -107,11 +107,12 @@ def read_coordinates(file_path):
         parts = line.split()
         if len(parts) == 4:
             atoms.append([parts[0], float(parts[1]), float(parts[2]), float(parts[3])])
-    return lines[:start_index], atoms
+    return lines[0] atoms
 
 def write_coordinates(file_path, header, atoms):
     with open(file_path, 'w') as file:
         file.writelines(header)
+        file.writelines('\n')
         for atom in atoms:
             file.write(f"{atom[0]:<3} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
 
