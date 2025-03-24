@@ -138,6 +138,7 @@ def process_file(file_path):
     
     print("Translated Coordinates:")
     for index in molecule1_atoms:
+        index -=1
         print(f"Atom {index+1}: {atoms[index]}")
     
     write_coordinates(new_file_path, header, atoms)
