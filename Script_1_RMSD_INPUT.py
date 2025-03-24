@@ -107,7 +107,7 @@ def read_coordinates(file_path):
         parts = line.split()
         if len(parts) == 4:
             atoms.append([parts[0], float(parts[1]), float(parts[2]), float(parts[3])])
-    return lines[0] atoms
+    return lines[0],atoms
 
 def write_coordinates(file_path, header, atoms):
     with open(file_path, 'w') as file:
