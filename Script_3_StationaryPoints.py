@@ -294,7 +294,7 @@ def launcherstatp(logfilelist):
                 with open(reduced_filename + ".sub", "w") as gsub:
                     gsub.write('#!/bin/sh\n')
                     gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
-                    gsub.write('#SBATCH --ntasks=12\n')
+                    gsub.write('#SBATCH --cpus-per-task=12\n')
                     gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
                     gsub.write(f'#SBATCH --time={statp_time}\n')
                     gsub.write('\n')
