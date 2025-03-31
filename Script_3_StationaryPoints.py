@@ -477,7 +477,7 @@ print(f"IRC results tab '{new_sheet_name}' added to {file_path}")
 #-----Run scripts------
 
 
-#launcherstatp(logfilelist)
+launcherstatp(logfilelist)
 if basis_in.lower()=='cbs':
 	launcherTS(listofTS)
-#launch_dependent_job()
+launch_dependent_job()
