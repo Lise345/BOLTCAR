@@ -52,7 +52,7 @@ def read_parameters(file_path):
         sr_time = '25:00:00'  # Default value if not found
         print("Time for stationary calculations not found, defaulting to 25:00:00")
 
-    return molecule1_atoms, molecule2_atoms,sr_time
+    return molecule1_atoms, molecule2_atoms, sr_time, rootdir
 
 def write_gaussian_input(file_name, molecule, suffix):
     """Writes a Gaussian input file."""
@@ -121,7 +121,7 @@ g16 -p=$SLURM_CPUS_PER_TASK -m=80GB < {input_file} > {output_file}
 def launcher(log_files, parameters_file, dependency_script):
     MAX_JOBS = 100
     """Generates Gaussian input files, submission scripts, and launches jobs."""
-    molecule1_indices, molecule2_indices, sr_time = read_parameters(parameters_file)
+    molecule1_indices, molecule2_indices, sr_time, rootdir = read_parameters(parameters_file)
     job_ids = []
 
     n=0
@@ -178,6 +178,7 @@ def launcher(log_files, parameters_file, dependency_script):
 if __name__ == "__main__":
     log_files = [f for f in os.listdir("./") if f.endswith("Complex.log")]
     parameters_file = "parameters.txt"
+    molecule1_atoms, molecule2_atoms, sr_time, rootdir = read_parameters(parameters_file)
     dependency_script = os.path.join(rootdir, '5_BOLTCAR_Results.sub')
     launcher(log_files, parameters_file, dependency_script)
 
