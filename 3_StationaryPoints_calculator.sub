@@ -2,7 +2,7 @@
 #SBATCH --job-name=StatPoint
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=StatPoint.logfile
+#SBATCH --output=3_StatPoint.logfile
 #SBATCH --time=01:00:00
 
 #Opening correct folder
