@@ -1,8 +1,8 @@
 #!/bin/sh
-#SBATCH --job-name=BOLTCAR_sub
+#SBATCH --job-name=FASTCAR_sub
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=BOLTCAR_sub.logfile
+#SBATCH --output=1_FASTCAR_sub.logfile
 #SBATCH --time=10:00:00
 
 #Defining Gaussian Parameters

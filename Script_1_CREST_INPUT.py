@@ -319,7 +319,8 @@ with open('script_CREST.sub', 'w') as file:
     file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')	
     #file.write(f'crest struc.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
     file.write(f'crest coord -cregen crest_conformers.xyz -ewin 30\n')
-    #file.write(f'cp ../Script_1_RMSD_INPUT.py ./\n')
+    file.write(f'cp ../Script_1_RMSD_INPUT.py ./\n')
+    file.write(f'dos2unix Script_1_RMSD_INPUT.py\n')
     file.write(f'./Script_1_RMSD_INPUT.py\n')
     file.write('\n')
 

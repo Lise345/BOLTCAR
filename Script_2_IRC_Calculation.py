@@ -141,6 +141,18 @@ errorterm=[]
 for file in listfiles:
     checkfrequency(file)
 
+def jobid(filename):
+    match = re.findall(r"(\d+)", filename) #Finds all sequences of numbers
+    if match:
+        for group in match:
+            if len(group)==4: #if sequence of numbers is 4 units long then return that as the jobid; unlikely that in name a sequence of 4 numbers would be added
+                numbers=group
+    return numbers
+
+incorrectTS = sorted(incorrectTS, key=jobid)
+correctTS = sorted(correctTS, key=jobid)
+errorterm = sorted(errorterm, key=jobid)
+
 print("The correct TS are")
 print(correctTS)
 
@@ -150,8 +162,6 @@ print(incorrectTS)
 
 print("The error TS are")
 print(errorterm)
-
-
 
 #------------Convert files to their xyz--------------
 def lastgeometry(filename):
@@ -471,7 +481,7 @@ def launcher(uplist,rootdir,binfolder):
         with open(reduced_filename+".sub","w") as gsub:
             gsub.write('#!/bin/sh\n')
             gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
-            gsub.write('#SBATCH --ntasks=12\n')
+            gsub.write('#SBATCH --cpus-per-task=12\n')
             gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
             gsub.write(f'#SBATCH --time={irc_time}\n')
             gsub.write('\n')

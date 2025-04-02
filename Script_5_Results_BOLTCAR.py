@@ -100,8 +100,8 @@ directory = './'
 data_dict = {}
 
 for filename in os.listdir(directory):
-    if filename.startswith('ccpvdz_startgeom-') and (filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log')):
-        identification_number = jobid(filename)
+    if filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log'):
+        identification_number = filename.split('-')[1].split('_')[0]
         file_path = os.path.join(directory, filename)
         
         pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = extract_values(file_path)
@@ -342,7 +342,7 @@ plt.figure(figsize=(10, 5))
 plt.scatter(df_filtered['ID Number'], df_filtered['Percentage']*100, color='y', label='Percentages')
 plt.xlabel('ID Number')
 plt.ylabel('Percentage (%)')
-plt.title('Product Energies for ID Numbers with Pi > 0')
+plt.title('Percentages for ID Numbers with Pi > 0')
 plt.xticks(rotation=90)
 plt.legend()
 plt.grid()

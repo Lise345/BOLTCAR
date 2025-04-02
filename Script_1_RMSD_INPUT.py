@@ -107,11 +107,12 @@ def read_coordinates(file_path):
         parts = line.split()
         if len(parts) == 4:
             atoms.append([parts[0], float(parts[1]), float(parts[2]), float(parts[3])])
-    return lines[:start_index], atoms
+    return lines[0],atoms
 
 def write_coordinates(file_path, header, atoms):
     with open(file_path, 'w') as file:
         file.writelines(header)
+        file.writelines('\n')
         for atom in atoms:
             file.write(f"{atom[0]:<3} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
 
@@ -138,6 +139,7 @@ def process_file(file_path):
     
     print("Translated Coordinates:")
     for index in molecule1_atoms:
+        index -=1
         print(f"Atom {index+1}: {atoms[index]}")
     
     write_coordinates(new_file_path, header, atoms)
@@ -203,10 +205,10 @@ if ' CREST terminated normally.' in last_line:
     ordxyzlist = sorted(xyzlist)
 
     n = 1
-    MAX_JOBS = 10
-    MAX_SUB_FILES = 5  # Maximum number of .sub files allowed
+    MAX_JOBS = 50
+    MAX_SUB_FILES = 50  # Maximum number of .sub files allowed
     listn = ordxyzlist[:]
-    print("Files that are used to create TS calculations)
+    print("Files that are used to create TS calculations")
     print(listn)
     
     inp_file_job_ids = []

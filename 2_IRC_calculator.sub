@@ -2,7 +2,7 @@
 #SBATCH --job-name=IRCcalc
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=IRCcalc.logfile
+#SBATCH --output=2_IRCcalc.logfile
 #SBATCH --time=01:00:00
 
 #Defining Gaussian Parameters

@@ -294,7 +294,7 @@ def launcherstatp(logfilelist):
                 with open(reduced_filename + ".sub", "w") as gsub:
                     gsub.write('#!/bin/sh\n')
                     gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
-                    gsub.write('#SBATCH --ntasks=12\n')
+                    gsub.write('#SBATCH --cpus-per-task=12\n')
                     gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
                     gsub.write(f'#SBATCH --time={statp_time}\n')
                     gsub.write('\n')
@@ -347,7 +347,7 @@ def launcherTS(xyzlist):
         with open(reduced_filename+".sub","w") as gsub:
             gsub.write('#!/bin/sh\n')
             gsub.write(f'#SBATCH --job-name='+filename[:-4]+'\n')
-            gsub.write('#SBATCH --ntasks=12\n')
+            gsub.write('#SBATCH --cpus-per-task=12\n')
             gsub.write(f'#SBATCH --output='+filename[:-4]+'.logfile\n')
             gsub.write(f'#SBATCH --time={TS_time}\n')
             gsub.write('\n')
@@ -477,7 +477,7 @@ print(f"IRC results tab '{new_sheet_name}' added to {file_path}")
 #-----Run scripts------
 
 
-#launcherstatp(logfilelist)
+launcherstatp(logfilelist)
 if basis_in.lower()=='cbs':
 	launcherTS(listofTS)
-#launch_dependent_job()
+launch_dependent_job()

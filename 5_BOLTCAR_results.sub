@@ -2,7 +2,7 @@
 #SBATCH --job-name=FastcarResults
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=5FastcarResults.logfile
+#SBATCH --output=5_FastcarResults.logfile
 #SBATCH --time=01:00:00
 
 #Defining Folders
@@ -24,7 +24,7 @@ module load openpyxl/3.1.2-GCCcore-12.3.0
 module load matplotlib/3.7.2-gfbf-2023a
 
 #Launching calculation
-cp Automated_Results_CREST.py ./CREST/TS-CREST/Automated_Results_CREST.py
+cp Script_5_Results_BOLTCAR.py ./CREST/TS-CREST/Script_5_Results_BOLTCAR.py
 mkdir -p Results
 mkdir -p Results/inputs
 mkdir -p Results/outputs
