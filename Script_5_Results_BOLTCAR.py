@@ -95,7 +95,7 @@ directory = './'
 data_dict = {}
 
 for filename in os.listdir(directory):
-    if filename.startswith('ccpvdz_startgeom-') and (filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log')):
+    if filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log'):
         identification_number = filename.split('-')[1].split('_')[0]
         file_path = os.path.join(directory, filename)
         
