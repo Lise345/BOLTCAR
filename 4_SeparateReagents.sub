@@ -2,7 +2,7 @@
 #SBATCH --job-name=SeparateReagents
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=SeparateReagents.logfile
+#SBATCH --output=4_SeparateReagents.logfile
 #SBATCH --time=01:00:00
 
 #Opening correct folder
