@@ -280,8 +280,8 @@ def launcherstatp(logfilelist):
     for i, logfile1 in enumerate(logfilelist):
         number1 = jobid(logfile1)
         for j, logfile2 in enumerate(logfilelist):
-	    number2 = jobid(logfile2)
-            if number1==number2  and logfile1 != logfile2 and j > i:
+            number2 = jobid(logfile2)
+            if number1 == number2 and logfile1 != logfile2 and j > i:
                 geometry1 = geometryextractor(logfile1)
                 updated_geometry1 = geometryconverter(geometry1)
                 distance1_CC1 = distance(updated_geometry1, CC1)
@@ -478,6 +478,6 @@ print(f"IRC results tab '{new_sheet_name}' added to {file_path}")
 
 
 launcherstatp(logfilelist)
-if basis_in.lower()=='cbs':
-	launcherTS(listofTS)
+#if basis_in.lower()=='cbs':
+	#launcherTS(listofTS)
 launch_dependent_job()
