@@ -255,7 +255,10 @@ else:
 
 
 # Calculate Rate Constant
-df['Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy']) * 1000 * 4.184 / (8.314 * 298.15))
+df['Forward rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy']-df['Complex Energy'])) * 1000 * 4.184 / (8.314 * 298.15))
+
+# Calculate Rate Constant
+df['Reverse rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy']-df['Product Energy'])) * 1000 * 4.184 / (8.314 * 298.15))
 
 # Sort by identification number
 df = df.sort_values(by='ID Number')
