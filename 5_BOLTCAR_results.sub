@@ -6,9 +6,9 @@
 #SBATCH --time=01:00:00
 
 #Defining Folders
-cd $VSC_SCRATCH/lise/13_Ondemand/Fulvenes/Fullstructure/P_FvFv/BOLTCAR_FvFv_Endo1
+cd $VSC_SCRATCH/Changetoyourfolder
 
-MAIN_DIR="$VSC_SCRATCH/lise/13_Ondemand/Fulvenes/Fullstructure/P_FvFv/BOLTCAR_FvFv_Endo1"
+MAIN_DIR="$VSC_SCRATCH/Changetoyourfolder"
 
 TS_CREST_DIR="$MAIN_DIR/CREST/TS-CREST"
 
@@ -33,7 +33,7 @@ cd CREST/
 cd TS-CREST/
 chmod 777 Script_5_Results_BOLTCAR.py
 python Script_5_Results_BOLTCAR.py
-cp ./FASTCAR_results.xlsx ../../Results/FASTCAR_results.xlsx
+cp ./FASTCAR_results.xlsx ../../Results/BOLTCAR_results.xlsx
 cp ./TS_analysis.xlsx ../../Results/TS_analysis.xlsx
 
 cd ../..
