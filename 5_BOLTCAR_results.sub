@@ -35,6 +35,7 @@ chmod 777 Script_5_Results_BOLTCAR.py
 python Script_5_Results_BOLTCAR.py
 cp ./FASTCAR_results.xlsx ../../Results/BOLTCAR_results.xlsx
 cp ./TS_analysis.xlsx ../../Results/TS_analysis.xlsx
+rm *.chk
 
 cd ../..
 
