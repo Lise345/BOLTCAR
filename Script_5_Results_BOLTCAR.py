@@ -266,10 +266,10 @@ if (df['Complex Energy'] > 1).all():
     print(f"No stable complexes found, we assume the reaction will be the one with the lowest barrier, being {min_ts_energy_row['ID Number']}.")
 
 # Save results
-df.to_excel('FASTCAR_results.xlsx', index=False, columns=[col if col != 'Pi Value' else 'Pi Value Display' for col in df.columns])
+df.to_excel('BOLTCAR_results.xlsx', index=False, columns=[col if col != 'Pi Value' else 'Pi Value Display' for col in df.columns])
 
 
-print("Data extraction complete. The results are saved in 'FASTCAR_results.xlsx'.")
+print("Data extraction complete. The results are saved in 'BOLTCAR_results.xlsx'.")
 
 # Check for stable complexes
 if (df['Complex Energy'] > 1).all():
