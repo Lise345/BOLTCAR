@@ -38,8 +38,8 @@ def extract_values(file_path):
             if 'Error termination via Lnk1e' in line:
                 return np.nan, np.nan, np.nan, np.nan  # Mark calculation as failed
             
-            if 'SCF Done:  E(RM062X) =' in line:
-                match = re.search(r'SCF Done:  E\(RM062X\) =\s+(-?\d+\.\d+)', line)
+            if 'SCF Done:' in line:
+                match = re.search(r'SCF Done:\s+E\(\S+\)\s+=\s+(-?\d+\.\d+)', line)
                 if match:
                     last_scf_done = float(match.group(1))  # Always keep last SCF value
 
