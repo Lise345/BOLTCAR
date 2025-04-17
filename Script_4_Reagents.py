@@ -83,7 +83,7 @@ def write_gaussian_input(file_name, molecule, suffix, charge, multiplicity):
 
 {file_name}_{suffix} optfreq
 
-{charge} {multiplicity} 1\n"""
+{charge} {multiplicity}\n"""
     with open(output_path, 'w') as output_file:
         output_file.write(header)
         for atom in molecule:
