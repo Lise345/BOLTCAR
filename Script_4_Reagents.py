@@ -52,9 +52,28 @@ def read_parameters(file_path):
         sr_time = '25:00:00'  # Default value if not found
         print("Time for stationary calculations not found, defaulting to 25:00:00")
 
-    return molecule1_atoms, molecule2_atoms, sr_time, rootdir
+    charger1 = re.search(r'ChargeR1 (-?\d+)', file_content)
+    if charger1:
+        charger1 = charger1.group(1)
+    else:
+        raise ValueError("Charge value not found in parameters file.")
 
-def write_gaussian_input(file_name, molecule, suffix):
+    charger2 = re.search(r'ChargeR2 (-?\d+)', file_content)
+    if charger2:
+        charger2 = charger2.group(1)
+    else:
+        raise ValueError("Charge value not found in parameters file.")
+
+
+    multiplicityr1 = re.search(r'MultiplicityR1 (-?\d+)', file_content)
+    multiplicityr1 = multiplicityr1.group(1)
+
+    multiplicityr2 = re.search(r'MultiplicityR2 (-?\d+)', file_content)
+    multiplicityr2 = multiplicityr2.group(1)
+
+    return molecule1_atoms, molecule2_atoms, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2
+
+def write_gaussian_input(file_name, molecule, suffix, charge, multiplicity):
     """Writes a Gaussian input file."""
     output_path = f"{file_name}_{suffix}.gjf"
     header = f"""%nprocshared=8
@@ -64,7 +83,7 @@ def write_gaussian_input(file_name, molecule, suffix):
 
 {file_name}_{suffix} optfreq
 
-0 1\n"""
+{charge} {multiplicity} 1\n"""
     with open(output_path, 'w') as output_file:
         output_file.write(header)
         for atom in molecule:
@@ -80,7 +99,7 @@ def write_gaussian_input(file_name, molecule, suffix):
 
 {file_name}_{suffix} E_ccpvtz
 
-0 1
+{charge} {multiplicity}
 
 --Link1--
 %nprocshared=8
@@ -90,7 +109,7 @@ def write_gaussian_input(file_name, molecule, suffix):
 
 {file_name}_{suffix} E_ccpvqz
 
-0 1
+{charge} {multiplicity}
 
 """
         output_file.write(link1_text)
@@ -121,7 +140,7 @@ g16 -p=$SLURM_CPUS_PER_TASK -m=80GB < {input_file} > {output_file}
 def launcher(log_files, parameters_file, dependency_script):
     MAX_JOBS = 100
     """Generates Gaussian input files, submission scripts, and launches jobs."""
-    molecule1_indices, molecule2_indices, sr_time, rootdir = read_parameters(parameters_file)
+    molecule1_indices, molecule2_indices, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2 = read_parameters(parameters_file)
     job_ids = []
 
     n=0
@@ -140,8 +159,8 @@ def launcher(log_files, parameters_file, dependency_script):
             molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
 
             # Write input files
-            input_R1 = write_gaussian_input(base_name, molecule1, "R1")
-            input_R2 = write_gaussian_input(base_name, molecule2, "R2")
+            input_R1 = write_gaussian_input(base_name, molecule1, "R1", charger1, multiplicityr1)
+            input_R2 = write_gaussian_input(base_name, molecule2, "R2", charger2, multiplicityr2)
             
             # Create and submit jobs
             for suffix, input_file in zip(["R1", "R2"], [input_R1, input_R2]):
@@ -149,6 +168,7 @@ def launcher(log_files, parameters_file, dependency_script):
                 job_name = f"{base_name}_{suffix}"
                 script_name = create_submission_script(job_name, input_file, output_file, sr_time)
 
+                
                 result = subprocess.run(f"sbatch {script_name}", shell=True, stdout=subprocess.PIPE, text=True)
                 if result.returncode == 0:
                     job_id = re.search(r'(\d+)', result.stdout)
@@ -178,7 +198,6 @@ def launcher(log_files, parameters_file, dependency_script):
 if __name__ == "__main__":
     log_files = [f for f in os.listdir("./") if f.endswith("Complex.log")]
     parameters_file = "parameters.txt"
-    molecule1_atoms, molecule2_atoms, sr_time, rootdir = read_parameters(parameters_file)
+    molecule1_atoms, molecule2_atoms, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2  = read_parameters(parameters_file)
     dependency_script = os.path.join(rootdir, '5_BOLTCAR_Results.sub')
     launcher(log_files, parameters_file, dependency_script)
-
