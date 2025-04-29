@@ -230,35 +230,65 @@ required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ 
 df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
 
 # Compute Pi Value numerically where all values exist
-df['Pi Value'] = np.exp(-df['Complex Energy'] / (0.001987204259 * 298.15))
+df['Pi Value forward'] = np.exp(-df['Complex Energy'] / (0.001987204259 * 298.15))
+
+df['Pi Value reverse'] = np.exp(-df['Product Energy'] / (0.001987204259 * 298.15))
 
 # Ensure Pi Value is zero if Complex Energy > 1
-df.loc[df['Complex Energy'] > 1, 'Pi Value'] = 0
+df.loc[df['Complex Energy'] > 1, 'Pi Value forward'] = 0
 
 # Create a separate column for display in Excel
-df['Pi Value Display'] = df['Pi Value']
+df['Pi Value Display F'] = df['Pi Value forward']
+df['Pi Value Display R'] = df['Pi Value reverse']
 
 # Replace NaN values with "Calculation failed" ONLY in the Excel output column
-df['Pi Value Display'] = df['Pi Value Display'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
+df['Pi Forward'] = df['Pi Value Display F'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
+df['Pi Reverse'] = df['Pi Value Display R'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
 
 
 
 
 
 # Handle Pi Value sums safely
-pi_sum = df['Pi Value'].sum(skipna=True) 
+pi_sum_forward = df['Pi Value forward'].sum(skipna=True) 
+pi_sum_reverse = df['Pi Value reverse'].sum(skipna=True)
 
-if pi_sum == 0:  # Avoid division by zero
-    df['Percentage'] = 0
+if pi_sum_forward == 0:  # Avoid division by zero
+    df['Percentage Forward'] = 0
 else:
-    df['Percentage'] = df['Pi Value'].apply(lambda x: x / pi_sum if pd.notna(x) else 0)
+    df['Percentage Forward'] = df['Pi Forward'].apply(lambda x: x / pi_sum_forward if pd.notna(x) else 0).round(3)*100
+
+if pi_sum_reverse == 0:
+    df['Percentage Reverse'] = 0
+else:
+    df['Percentage Reverse'] = df['Pi Reverse'].apply(lambda x: x / pi_sum_reverse if pd.notna(x) else 0).round(3)*100
+    
+
+df['Forward Barrier'] = np.where(
+    df['Complex Energy'] > 0,
+    df['TS Energy'],
+    df['TS Energy'] - df['Complex Energy']
+)
+df['Reverse Barrier'] = df['TS Energy'] - df['Product Energy']
 
 
 # Calculate Rate Constant
-df['Forward rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy']-df['Complex Energy'])) * 1000 * 4.184 / (8.314 * 298.15))
+df['Forward Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['Forward Barrier']) * 1000 * 4.184 / (8.314 * 298.15))
+df['Reverse Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['Reverse Barrier']) * 1000 * 4.184 / (8.314 * 298.15))
 
-# Calculate Rate Constant
-df['Reverse rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['TS Energy']-df['Product Energy'])) * 1000 * 4.184 / (8.314 * 298.15))
+avg_forward = "No average displayed because the fastest reaction will prevail"
+avg_reverse = "No average displayed because the fastest reaction will prevail"
+
+if (df['Percentage Forward'] > 0).any():
+    avg_forward = "{:.1E}".format(np.average(df['Forward Rate Constant'], weights=df['Percentage Forward']))
+
+if (df['Percentage Reverse'] > 0).any():
+    avg_reverse = "{:.1E}".format(np.average(df['Reverse Rate Constant'], weights=df['Percentage Reverse']))
+
+avg_data = pd.DataFrame({
+    'Weighted Average Forward rate Constant': [avg_forward],
+    'Weighted Average Reverse rate Constant': [avg_reverse]
+})
 
 # Sort by identification number
 df = df.sort_values(by='ID Number')
@@ -268,22 +298,33 @@ if (df['Complex Energy'] > 1).all():
     min_ts_energy_row = df.loc[df['TS Energy'].idxmin()]
     print(f"No stable complexes found, we assume the reaction will be the one with the lowest barrier, being {min_ts_energy_row['ID Number']}.")
 
-# Save results
-df.to_excel('BOLTCAR_results.xlsx', index=False, columns=[col if col != 'Pi Value' else 'Pi Value Display' for col in df.columns])
+round_cols = ['Complex Energy', 'TS Energy', 'Product Energy', 'Pi Value Display', 'Percentage', 'Forward Barrier', 'Reverse Barrier']
+for col in round_cols:
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce').round(1)
 
+
+first_cols = ['ID Number', 'Complex Energy', 'TS Energy', 'Product Energy', 'Forward Barrier', 'Percentage Forward', 'Reverse Barrier', 'Percentage Reverse', 'Forward Rate Constant', 'Reverse Rate Constant']
+
+# Then add the remaining ones that are not already in first_cols
+remaining_cols = [col for col in df.columns if col not in first_cols]
+
+# Full column order
+new_columns = first_cols + remaining_cols
+
+# Save results
+with pd.ExcelWriter('BOLTCAR_results.xlsx') as writer:
+    # Save the full dataset
+    df.to_excel(writer, index=False, sheet_name='Full Results', columns=[col if col != 'Pi Value' else 'Pi Value Display' for col in new_columns])
+
+    # Save the weighted averages
+    avg_data.to_excel(writer, index=False, sheet_name='Weighted Averages')
 
 print("Data extraction complete. The results are saved in 'BOLTCAR_results.xlsx'.")
 
-# Check for stable complexes
-if (df['Complex Energy'] > 1).all():
-    min_ts_energy_row = df.loc[df['TS Energy'].idxmin()]
-    print(f"No stable Complexes found, the path of the lowest transition state energy will be followed, being {min_ts_energy_row['ID Number']}.")
-
-
-
 
 # Convert Pi Value to numeric where possible (ignoring "Calculation failed")
-df['Pi Value Numeric'] = pd.to_numeric(df['Pi Value'], errors='coerce')
+df['Pi Value Numeric'] = pd.to_numeric(df['Pi Value forward'], errors='coerce')
 
 # Check if there are any positive Pi Values
 has_positive_pi = (df['Pi Value Numeric'] > 0).any()
@@ -296,6 +337,7 @@ else:
 
 # Ensure valid numeric values before plotting
 df_filtered = df_filtered.dropna(subset=['Complex Energy', 'TS Energy', 'Product Energy'])
+
 
 
 
@@ -342,7 +384,7 @@ plt.close()
 
 # Plot and save Percentages
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Percentage']*100, color='y', label='Percentages')
+plt.scatter(df_filtered['ID Number'], df_filtered['Percentage Forward']*100, color='y', label='Percentages')
 plt.xlabel('ID Number')
 plt.ylabel('Percentage (%)')
 plt.title('Percentages for ID Numbers with Pi > 0')
@@ -353,4 +395,3 @@ plt.savefig(os.path.join(output_dir, "percentages.png"), dpi=300, bbox_inches='t
 plt.close()
 
 print(f"Plots saved in '{output_dir}' directory.")
-
