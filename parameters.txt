@@ -25,7 +25,6 @@ Basis cbs
 DFT solvent  none
 Additional calculation  none
 Excluding nodes 01-06
-Energy of separate reagents -936.284718313083
 Charge 0
 Multiplicity 1
 Time for IRC calcs 40
