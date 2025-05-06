@@ -43,7 +43,6 @@ Functional  m062x --> Type functional of choice
 Dispersion  empiricaldispersion=gd3 --> Type dispersion of choice or None if none should be used  
 Basis cbs --> Type basis set of choice, "cbs" will do an infinite basis set extrapolation using cc-pvdz/tz/qz basis sets  
 DFT solvent  none --> Type solvent of choice or none  
-Energy of separate reagents -1200.27851165566 --> Type energy of separate reagents (will only be used if separate reagents are not calculated (TODO))  
 Charge 0 --> Type Charge of system  
 Multiplicity 1 --> Type Multiplicity of system  
 Time for IRC calcs 40 --> Type time required for IRC calcs  
