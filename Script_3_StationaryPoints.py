@@ -390,7 +390,7 @@ def launcherTS(xyzlist):
 def launch_dependent_job():
     if inp_file_job_ids:
         dependency_str = ":".join(inp_file_job_ids)
-        extractor_script = os.path.join(rootdir, '4_SeparateReagents.sub')
+        extractor_script = os.path.join(rootdir, '4_SeparateReactants.sub')
         
         if not os.path.exists(extractor_script):
             raise FileNotFoundError(f"Extractor script not found: {extractor_script}")
