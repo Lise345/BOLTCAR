@@ -248,21 +248,23 @@ df['Pi Reverse'] = df['Pi Value Display R'].apply(lambda x: 'Calculation failed'
 
 
 
+# Convert Pi columns to numeric safely (invalid entries become NaN)
+df['Pi Forward Numeric'] = pd.to_numeric(df['Pi Forward'], errors='coerce')
+df['Pi Reverse Numeric'] = pd.to_numeric(df['Pi Reverse'], errors='coerce')
 
-
-# Handle Pi Value sums safely
-pi_sum_forward = df['Pi Value forward'].sum(skipna=True) 
-pi_sum_reverse = df['Pi Value reverse'].sum(skipna=True)
+# Recalculate sums with only valid numeric entries
+pi_sum_forward = df['Pi Forward Numeric'].sum(skipna=True)
+pi_sum_reverse = df['Pi Reverse Numeric'].sum(skipna=True)
 
 if pi_sum_forward == 0:  # Avoid division by zero
     df['Percentage Forward'] = 0
 else:
-    df['Percentage Forward'] = df['Pi Forward'].apply(lambda x: x / pi_sum_forward if pd.notna(x) else 0).round(3)*100
+    df['Percentage Forward'] = df['Pi Forward Numeric'].apply(lambda x: x / pi_sum_forward if pd.notna(x) else 0).round(3)*100
 
 if pi_sum_reverse == 0:
     df['Percentage Reverse'] = 0
 else:
-    df['Percentage Reverse'] = df['Pi Reverse'].apply(lambda x: x / pi_sum_reverse if pd.notna(x) else 0).round(3)*100
+    df['Percentage Reverse'] = df['Pi Reverse Numeric'].apply(lambda x: x / pi_sum_reverse if pd.notna(x) else 0).round(3)*100
     
 
 df['Forward Barrier'] = np.where(
@@ -280,11 +282,20 @@ df['Reverse Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.ex
 avg_forward = "No average displayed because the fastest reaction will prevail"
 avg_reverse = "No average displayed because the fastest reaction will prevail"
 
-if (df['Percentage Forward'] > 0).any():
-    avg_forward = "{:.1E}".format(np.average(df['Forward Rate Constant'], weights=df['Percentage Forward']))
+# Ensure valid weights and rates for forward
+valid_forward_mask = pd.notna(df['Forward Rate Constant']) & pd.notna(df['Percentage Forward']) & (df['Percentage Forward'] > 0)
+if valid_forward_mask.any():
+    avg_forward_value = np.average(df.loc[valid_forward_mask, 'Forward Rate Constant'],
+                                   weights=df.loc[valid_forward_mask, 'Percentage Forward'])
+    avg_forward = "{:.1E}".format(avg_forward_value)
 
-if (df['Percentage Reverse'] > 0).any():
-    avg_reverse = "{:.1E}".format(np.average(df['Reverse Rate Constant'], weights=df['Percentage Reverse']))
+# Ensure valid weights and rates for reverse
+valid_reverse_mask = pd.notna(df['Reverse Rate Constant']) & pd.notna(df['Percentage Reverse']) & (df['Percentage Reverse'] > 0)
+if valid_reverse_mask.any():
+    avg_reverse_value = np.average(df.loc[valid_reverse_mask, 'Reverse Rate Constant'],
+                                   weights=df.loc[valid_reverse_mask, 'Percentage Reverse'])
+    avg_reverse = "{:.1E}".format(avg_reverse_value)
+
 
 avg_data = pd.DataFrame({
     'Weighted Average Forward rate Constant': [avg_forward],
@@ -341,7 +352,9 @@ df_filtered = df_filtered.dropna(subset=['Complex Energy', 'TS Energy', 'Product
 
 
 
-
+# Define y-limits with margin
+min_energy = min(df_filtered['Complex Energy'].min(), df_filtered['TS Energy'].min(), df_filtered['Product Energy'].min()) - 1
+max_energy = max(df_filtered['Complex Energy'].max(), df_filtered['TS Energy'].max(), df_filtered['Product Energy'].max()) + 1
 
 # Ensure the directory for saving plots exists
 output_dir = "plots"
@@ -349,12 +362,13 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Plot and save Complex Energy
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Complex Energy'], color='b', label='Complex Energy')
+plt.scatter(df_filtered['ID Number'], df_filtered['Complex Energy'], color='b', label=f'Complex Energy\nAvg kf = {avg_forward}')
 plt.xlabel('ID Number')
 plt.ylabel('Energy (kcal/mol)')
 plt.title('Complex Energies for ID Numbers with Pi > 0')
 plt.xticks(rotation=90)
 plt.legend()
+plt.ylim(min_energy, max_energy)
 plt.grid()
 plt.savefig(os.path.join(output_dir, "complex_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
@@ -367,25 +381,28 @@ plt.ylabel('Energy (kcal/mol)')
 plt.title('Transition State Energies for ID Numbers with Pi > 0')
 plt.xticks(rotation=90)
 plt.legend()
+plt.ylim(min_energy, max_energy)
 plt.grid()
 plt.savefig(os.path.join(output_dir, "ts_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
 # Plot and save Product Energy
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color='g', label='Product Energy')
+plt.scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color='g', label=f'Product Energy\nAvg kr = {avg_reverse}')
 plt.xlabel('ID Number')
 plt.ylabel('Energy (kcal/mol)')
 plt.title('Product Energies for ID Numbers with Pi > 0')
 plt.xticks(rotation=90)
 plt.legend()
+plt.ylim(min_energy, max_energy)
 plt.grid()
 plt.savefig(os.path.join(output_dir, "product_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
 # Plot and save Percentages
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Percentage Forward']*100, color='y', label='Percentages')
+plt.scatter(df_filtered['ID Number'], df_filtered['Percentage Forward'], color='orange', label='Forward %')
+plt.scatter(df_filtered['ID Number'], df_filtered['Percentage Reverse'], color='purple', label='Reverse %')
 plt.xlabel('ID Number')
 plt.ylabel('Percentage (%)')
 plt.title('Percentages for ID Numbers with Pi > 0')
@@ -396,9 +413,7 @@ plt.savefig(os.path.join(output_dir, "percentages.png"), dpi=300, bbox_inches='t
 plt.close()
 
 
-# Define y-limits with margin
-min_energy = min(df_filtered['Complex Energy'].min(), df_filtered['TS Energy'].min(), df_filtered['Product Energy'].min()) - 1
-max_energy = max(df_filtered['Complex Energy'].max(), df_filtered['TS Energy'].max(), df_filtered['Product Energy'].max()) + 1
+
 
 # Create 2x2 subplot layout
 fig, axs = plt.subplots(2, 2, figsize=(16, 12))
@@ -446,7 +461,7 @@ axs[1, 1].tick_params(axis='x', rotation=90)
 plt.tight_layout()
 
 # Save as PDF
-pdf_path = 'BOLTCAR_combined_plots.pdf'
+pdf_path = os.path.join(output_dir,"BOLTCAR_combined_plots.pdf")
 plt.savefig(pdf_path, dpi=300, bbox_inches='tight')
 plt.close()
 
