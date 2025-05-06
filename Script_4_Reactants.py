@@ -44,13 +44,13 @@ def read_parameters(file_path):
     rootdir_match = re.search(r'rootdir\s+(.+)', file_content)
     rootdir = rootdir_match.group(1).strip().strip("'\"")
     
-    time_sr = re.search(r'Time for Separate Reagent calcs\s+(\d+)', file_content)
+    time_sr = re.search(r'Time for Separate Reactant calcs\s+(\d+)', file_content)
     if time_sr:
         time_for_sr_calcs = int(time_sr.group(1))
         sr_time = f'{time_for_sr_calcs}:00:00'  # Format to HH:MM:SS
     else:
         sr_time = '25:00:00'  # Default value if not found
-        print("Time for stationary calculations not found, defaulting to 25:00:00")
+        print("Time for reactant calculations not found, defaulting to 25:00:00")
 
     charger1 = re.search(r'ChargeR1 (-?\d+)', file_content)
     if charger1:
