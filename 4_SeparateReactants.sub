@@ -1,8 +1,8 @@
 #!/bin/sh
-#SBATCH --job-name=SeparateReagents
+#SBATCH --job-name=SeparateReactants
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=4_SeparateReagents.logfile
+#SBATCH --output=4_SeparateReactants.logfile
 #SBATCH --time=01:00:00
 
 #Opening correct folder
@@ -15,8 +15,8 @@ export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH
 module load openpyxl/3.1.2-GCCcore-12.3.0
 
 #Launching calculation
-cp Script_4_Reagents.py ./CREST/TS-CREST/Script_4_Reagents.py
+cp Script_4_Reactants.py ./CREST/TS-CREST/Script_4_Reactants.py
 cd CREST/
 cd TS-CREST/
-chmod 777 Script_4_Reagents.py
-python Script_4_Reagents.py
+chmod 777 Script_4_Reactants.py
+python Script_4_Reactants.py
