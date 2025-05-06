@@ -3,6 +3,7 @@ import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 #with open('./parameters.txt', 'r') as parameters:
@@ -393,5 +394,62 @@ plt.legend()
 plt.grid()
 plt.savefig(os.path.join(output_dir, "percentages.png"), dpi=300, bbox_inches='tight')
 plt.close()
+
+
+# Define y-limits with margin
+min_energy = min(df_filtered['Complex Energy'].min(), df_filtered['TS Energy'].min(), df_filtered['Product Energy'].min()) - 1
+max_energy = max(df_filtered['Complex Energy'].max(), df_filtered['TS Energy'].max(), df_filtered['Product Energy'].max()) + 1
+
+# Create 2x2 subplot layout
+fig, axs = plt.subplots(2, 2, figsize=(16, 12))
+
+# Plot 1: Complex Energy
+axs[0, 0].scatter(df_filtered['ID Number'], df_filtered['Complex Energy'], color='b', label=f'Complex Energy\nAvg kf = {avg_forward}')
+axs[0, 0].set_title('Complex Energies')
+axs[0, 0].set_xlabel('ID Number')
+axs[0, 0].set_ylabel('Energy (kcal/mol)')
+axs[0, 0].set_ylim(min_energy, max_energy)
+axs[0, 0].legend()
+axs[0, 0].grid(True, which='both', linestyle='--', color='lightgrey')
+axs[0, 0].tick_params(axis='x', rotation=90)
+
+# Plot 2: TS Energy
+axs[0, 1].scatter(df_filtered['ID Number'], df_filtered['TS Energy'], color='r', label='TS Energy')
+axs[0, 1].set_title('Transition State Energies')
+axs[0, 1].set_xlabel('ID Number')
+axs[0, 1].set_ylabel('Energy (kcal/mol)')
+axs[0, 1].set_ylim(min_energy, max_energy)
+axs[0, 1].legend()
+axs[0, 1].grid(True, which='both', linestyle='--', color='lightgrey')
+axs[0, 1].tick_params(axis='x', rotation=90)
+
+# Plot 3: Product Energy
+axs[1, 0].scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color='g', label=f'Product Energy\nAvg kr = {avg_reverse}')
+axs[1, 0].set_title('Product Energies')
+axs[1, 0].set_xlabel('ID Number')
+axs[1, 0].set_ylabel('Energy (kcal/mol)')
+axs[1, 0].set_ylim(min_energy, max_energy)
+axs[1, 0].legend()
+axs[1, 0].grid(True, which='both', linestyle='--', color='lightgrey')
+axs[1, 0].tick_params(axis='x', rotation=90)
+
+# Plot 4: Percentages
+axs[1, 1].scatter(df_filtered['ID Number'], df_filtered['Percentage Forward'], color='orange', label='Forward %')
+axs[1, 1].scatter(df_filtered['ID Number'], df_filtered['Percentage Reverse'], color='purple', label='Reverse %')
+axs[1, 1].set_title('Reaction Percentages')
+axs[1, 1].set_xlabel('ID Number')
+axs[1, 1].set_ylabel('Percentage (%)')
+axs[1, 1].legend()
+axs[1, 1].grid(True, which='both', linestyle='--', color='lightgrey')
+axs[1, 1].tick_params(axis='x', rotation=90)
+
+plt.tight_layout()
+
+# Save as PDF
+pdf_path = 'BOLTCAR_combined_plots.pdf'
+plt.savefig(pdf_path, dpi=300, bbox_inches='tight')
+plt.close()
+
+print(f"Combined 2x2 plots saved as '{pdf_path}'.")
 
 print(f"Plots saved in '{output_dir}' directory.")
