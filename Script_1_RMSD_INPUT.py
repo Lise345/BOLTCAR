@@ -42,7 +42,7 @@ with open('../parameters.txt', 'r') as parameters:
         basis_1="cc-pvdz"
 
     pattern = re.compile('[\W_]+')
-    base_name = pattern.sub('', basis_1)
+    base_name = pattern.sub('', '')
 
     dispersion = re.search(r'Dispersion (.+)', file_content)
     dispersion = dispersion.group(1).strip()
