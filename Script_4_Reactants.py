@@ -43,6 +43,9 @@ def read_parameters(file_path):
 
     rootdir_match = re.search(r'rootdir\s+(.+)', file_content)
     rootdir = rootdir_match.group(1).strip().strip("'\"")
+
+    binfolder = re.search(r'bin (.+)', file_content)
+    binfolder = binfolder.group(1)
     
     time_sr = re.search(r'Time for Separate Reactant calcs\s+(\d+)', file_content)
     if time_sr:
@@ -71,15 +74,40 @@ def read_parameters(file_path):
     multiplicityr2 = re.search(r'MultiplicityR2 (-?\d+)', file_content)
     multiplicityr2 = multiplicityr2.group(1)
 
-    return molecule1_atoms, molecule2_atoms, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2
+    #DFT parameters
+    basis_in= re.search(r'Basis (.+)', file_content)
+    basis_in= basis_in.group(1).strip()
+    if basis_in.lower()=='cbs':
+        basis_1='cc-pvdz'
+        basis_2='cc-pvtz'
+        basis_3='cc-pvqz'
+    else:
+        basis_1=basis_in
+        basis_2=None
+        basis_3=None
 
-def write_gaussian_input(file_name, molecule, suffix, charge, multiplicity):
+    dispersion = re.search(r'Dispersion (.+)', file_content)
+    dispersion = dispersion.group(1).strip()
+    if dispersion == 'none' or dispersion == 'None':
+        dispersion = ''
+
+    solvent = re.search(r'DFT solvent (.+)', file_content)
+    solvent = solvent.group(1).strip()
+    if solvent == 'none' or solvent == 'None':
+        solvent = ''
+
+    functional = re.search(r'Functional (.+)', file_content)
+    functional = functional.group(1).strip()
+
+    return molecule1_atoms, molecule2_atoms, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2, basis_1, basis_2, basis_3, functional, dispersion, solvent
+
+def write_gaussian_input(file_name, molecule, suffix, charge, multiplicity, functional, basis_1, basis_2, basis_3, dispersion, solvent):
     """Writes a Gaussian input file."""
     output_path = f"{file_name}_{suffix}.gjf"
     header = f"""%nprocshared=8
 %mem=16GB
 %chk={file_name}_{suffix}.chk
-# opt=calcfc freq m062x cc-pvdz empiricaldispersion=gd3 
+# opt=calcfc freq {functional} {basis_1} {dispersion} {solvent} 
 
 {file_name}_{suffix} optfreq
 
@@ -89,13 +117,14 @@ def write_gaussian_input(file_name, molecule, suffix, charge, multiplicity):
         for atom in molecule:
             output_file.write(f" {atom[0]:<2} {atom[1]:>15.8f} {atom[2]:>15.8f} {atom[3]:>15.8f}\n")
         output_file.write("\n")
-
-# Append the required "Link1" sections with the correct name
-        link1_text = f"""--Link1--
+        link1_text = ""
+        if basis_2 != None and basis_3 != None:
+            # Append the required "Link1" sections with the correct name
+            link1_text = f"""--Link1--
 %nprocshared=8
 %mem=16GB
 %chk={file_name}_{suffix}.chk
-# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint
+# {functional} {basis_2} {dispersion} {solvent}  Geom=Checkpoint
 
 {file_name}_{suffix} E_ccpvtz
 
@@ -105,7 +134,7 @@ def write_gaussian_input(file_name, molecule, suffix, charge, multiplicity):
 %nprocshared=8
 %mem=16GB
 %chk={file_name}_{suffix}.chk
-# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint
+# {functional} {basis_3} {dispersion} {solvent} Geom=Checkpoint
 
 {file_name}_{suffix} E_ccpvqz
 
@@ -140,7 +169,7 @@ g16 -p=$SLURM_CPUS_PER_TASK -m=80GB < {input_file} > {output_file}
 def launcher(log_files, parameters_file, dependency_script):
     MAX_JOBS = 100
     """Generates Gaussian input files, submission scripts, and launches jobs."""
-    molecule1_indices, molecule2_indices, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2 = read_parameters(parameters_file)
+    molecule1_indices, molecule2_indices, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2, basis_1, basis_2, basis_3, functional, dispersion, solvent = read_parameters(parameters_file)
     job_ids = []
 
     n=0
@@ -157,10 +186,10 @@ def launcher(log_files, parameters_file, dependency_script):
             # Extract molecules
             molecule1 = [extracted_atoms[i - 1] for i in molecule1_indices]
             molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
-
+            
             # Write input files
-            input_R1 = write_gaussian_input(base_name, molecule1, "R1", charger1, multiplicityr1)
-            input_R2 = write_gaussian_input(base_name, molecule2, "R2", charger2, multiplicityr2)
+            input_R1 = write_gaussian_input(base_name, molecule1, "R1", charger1, multiplicityr1, functional, basis_1, basis_2, basis_3, dispersion, solvent)
+            input_R2 = write_gaussian_input(base_name, molecule2, "R2", charger2, multiplicityr2, functional, basis_1, basis_2, basis_3, dispersion, solvent)
             
             # Create and submit jobs
             for suffix, input_file in zip(["R1", "R2"], [input_R1, input_R2]):
@@ -198,6 +227,6 @@ def launcher(log_files, parameters_file, dependency_script):
 if __name__ == "__main__":
     log_files = [f for f in os.listdir("./") if f.endswith("Complex.log")]
     parameters_file = "parameters.txt"
-    molecule1_atoms, molecule2_atoms, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2  = read_parameters(parameters_file)
+    molecule1_atoms, molecule2_atoms, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2, basis_1, basis_2, basis_3, functional, dispersion, solvent = read_parameters(parameters_file)
     dependency_script = os.path.join(rootdir, '5_BOLTCAR_Results.sub')
     launcher(log_files, parameters_file, dependency_script)
