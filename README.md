@@ -1,71 +1,152 @@
-# FASTCAR_Adapted
+# BOLTCAR
 
-This code serves to analyse reactions of structures with flexible side chains. By using CREST to study the transition state structure (TS), all different kind of conformers can be studied. Our adaptation of the FASTCAR method automatically performs the CREST method and subsequently optimizes the corresponding transition state structures. To make sure these don't correspond to the same structure, the energy of the TS is analyzed. If two TS have a similar energy, the rotational constants will be evaluated to check whether the found TS are indeed the same structures. If so, these TS's are discarted. Afterwards the IRC of the structure is calculated. Then the complex and product structures are optimized and depending on the settings in the parameters.txt file the energies are extrapolated to an infinite basis set or not. Finally, the results are summarized in the adapted_FASTCAR_results.xlsx file, where the Boltzmann distribution is also used to determine the prevalence of each reaction. 
+**Boltzmann Optimized Likelihood Transition-state Calculation and Analysis for Reactions**
 
-# IMPORTANT
+BOLTCAR is a high-throughput Python-based pipeline to automatically identify, refine, and analyze transition states (TS) and reaction pathways based on Gaussian output files. It extends the FASTCAR approach by integrating conformer pruning (CREST + RMSD), intrinsic reaction coordinate (IRC) validation, stationary point analysis, and Boltzmann-weighted kinetic modeling.
 
-Check all submit scripts (.sub) as you will have to make changes to select your paths, as well as the parameters.txt file. Moreover, check the python codes (.py) to make sure the Gaussian calculation folders are created in the right folder.
+---
 
-# NAMEOFTHEFILE.out
+## 🛠 Installation and Setup
 
-The startgeom.out contains the output file of a Gaussian 16 calculation, where the initial TS was optimized. This will serve as the starting point of your calculation.
+Clone the repository:
 
-# Constraints.inp
+```bash
+git clone https://github.com/Lise345/BOLTCAR.git
+cd BOLTCAR
+```
 
-This file is a standard constraints file for a CREST calculation. In our example we fixed two bonds for which the distances are set to those in the Diels-Alder transition state. Make sure the constraints are not too loose, or you will find unrealistic results.
+Ensure you have:
+- Python 3.7+
+- Gaussian 16
+- CREST, xtb, sPyRMSD, OpenBabel
+- SLURM scheduler (for job submission)
+- Required Python packages (`pandas`, `numpy`, `matplotlib`, `openpyxl`)
 
-# Parameters.txt
+> ⚠️ **Important**: The `.sub` submission scripts include SLURM `module load` commands. **You must adapt these modules to match your cluster environment**, e.g., `module load Gaussian/G16`, `module load xtb`, etc.
 
-The Parameters file is used throughout the code and will set several variables that will be used.
+---
 
---------------------------------------------------
------------------CREST parameters-----------------
---------------------------------------------------
+## 🚀 How to Use
 
-CREST version --> select CREST version  
+### 1. Prepare Input
 
-CREST solvent --> type solvent if necessary  
+You need a Gaussian `.out` file for a **transition state** geometry (with at least one imaginary frequency):
 
---------------------------------------------------
-------------------RMSD parameters-----------------
---------------------------------------------------
+```bash
+python Script_1_CREST_INPUT.py your_TS_file.out
+```
 
-RMSD threshold  0.5 --> maximum RMSD threshold used to see if some TS's have converged  
-Energy threshold 0.05 --> maximum energy threshold used to see if some TS's have converged (in kcal/mol)  
-Energy window 10 --> maximum energy window used to see if some TS's have converged (in kcal/mol)  
-B_threshold 2 --> How to define this?  
+This will:
+- Extract geometry and frequency
+- Update `parameters.txt` with inferred properties
+- Create and launch `CREST` and pruning jobs via `Script_1_RMSD_INPUT.py`
 
---------------------------------------------------
-------------------DFT parameters------------------
---------------------------------------------------
+Each script then triggers the next via `.sub` files and job dependencies.
 
-Functional  m062x --> Type functional of choice  
-Dispersion  empiricaldispersion=gd3 --> Type dispersion of choice or None if none should be used  
-Basis cbs --> Type basis set of choice, "cbs" will do an infinite basis set extrapolation using cc-pvdz/tz/qz basis sets  
-DFT solvent  none --> Type solvent of choice or none  
-Charge 0 --> Type Charge of system  
-Multiplicity 1 --> Type Multiplicity of system  
-Time for IRC calcs 40 --> Type time required for IRC calcs  
-Time for stationary calcs 40 --> Type time required for Stationary calcs  
-Time for TS calcs 40 --> Type time required for TS calcs  
+---
 
---------------------------------------------------
----------------Geometry information---------------
---------------------------------------------------
+### 2. Workflow Overview
 
-molecule1_atoms = 3 8 9 12 13 14 17 18 19 20 21 22 23 24 42 43 44 45 --> Type atoms in molecule 1 (for calc of energy of separate reagents)  
-molecule2_atoms = 1 2 4 5 6 7 10 11 15 16 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 --> Type atoms in molecule 2 (for calc of energy of separate reagents)  
-atom1 = 1 --> Type atom that is part of C-C bond in molecule 1  
-atom2 = 12 --> Type atom that is part of C-C bond in molecule 2, connected to atom 1  
-size_molecule = 45 --> Type number of atoms in the molecule  
-CC1_in = "1 12" --> Type atoms that are part of C-C bond  
+| Step | Script                          | Description                                                          |
+|------|---------------------------------|----------------------------------------------------------------------|
+| 1    | `Script_1_CREST_INPUT.py`       | Extracts info, runs CREST, submits conformer search jobs            |
+| 2    | `Script_1_RMSD_INPUT.py`        | Prunes conformers via RMSD, submits TS optimizations                |
+| 3    | `Script_2_IRC_Calculation.py`   | Validates TS via IRC, filters on frequency, energy, and redundancy |
+| 4    | `Script_3_StationaryPoints.py`  | Distinguishes product and complex, submits SP calculations          |
+| 5    | `Script_4_Reactants.py`         | Extracts separate reagents and launches optimization jobs           |
+| 6    | `Script_5_Results_BOLTCAR.py`   | Collects results, calculates rate constants, generates plots        |
 
---------------------------------------------------
----------------------Used path--------------------
---------------------------------------------------
+---
 
-rootdir /rhea/scratch/brussel/105/vsc10536/lise/13_Ondemand/Fulvenes/Fullstructure/P_CyFv/BOLTCAR --> Type folder in which you will perform BOLTCAR  
-bin /vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/ --> Type path to your bin folder  
+## 🧾 Input File
 
+You must provide a Gaussian `.out` file with:
+- A complete frequency calculation
+- Geometry and standard orientation
+- Charge and multiplicity
 
+---
 
+## ⚙️ Configuration: `parameters.txt`
+
+This file is used throughout the pipeline to control all major inputs and SLURM parameters.
+
+---
+
+### CREST Parameters
+
+| Parameter        | Example     | Description                                      |
+|------------------|-------------|--------------------------------------------------|
+| `CREST version`  | `default`   | Select CREST version (`default`, `3.0`, etc.)    |
+| `CREST solvent`  | `none`      | Add if CREST solvation is needed (e.g. `--alpb`) |
+
+---
+
+### RMSD Pruning Parameters
+
+| Parameter          | Example | Description                                                       |
+|--------------------|---------|-------------------------------------------------------------------|
+| `RMSD threshold`   | `0.5`   | Maximum RMSD (Å) to consider TS geometries as equivalent          |
+| `Energy threshold` | `0.05`  | Energy diff in kcal/mol below which two TSs are considered similar |
+| `Energy window`    | `10`    | Maximum energy range considered in pruning (kcal/mol)            |
+| `B_threshold`      | `2`     | Rotational constant RMSD threshold in % for additional filtering |
+
+---
+
+### DFT Parameters
+
+| Parameter                  | Example                    | Description                                                                 |
+|----------------------------|----------------------------|-----------------------------------------------------------------------------|
+| `Functional`               | `m062x`                    | Functional to use                                                           |
+| `Dispersion`              | `empiricaldispersion=gd3` | Dispersion method (or `none`)                                               |
+| `Basis`                    | `cbs`                      | Basis set (`cbs` triggers cc-pVDZ/VTZ/VQZ extrapolation)                    |
+| `DFT solvent`              | `none`                     | Solvent model (e.g., `scrf=(smd,solvent=chloroform)`) or `none`             |
+| `Charge`                   | `0`                        | Total molecular charge                                                      |
+| `Multiplicity`             | `1`                        | Spin multiplicity                                                           |
+| `Time for TS calcs`        | `40`                       | SLURM job time in hours for TS optimization                                 |
+| `Time for IRC calcs`       | `40`                       | SLURM job time in hours for IRC calcs                                       |
+| `Time for stationary calcs`| `40`                       | SLURM job time in hours for stationary point calcs                          |
+
+---
+
+### Geometry Mapping
+
+| Parameter           | Example                              | Description                                                           |
+|---------------------|--------------------------------------|-----------------------------------------------------------------------|
+| `molecule1_atoms`   | `3 8 9 12 13 14 17 ...`              | Atom indices (space-separated) for molecule 1 (reagent 1)            |
+| `molecule2_atoms`   | `1 2 4 5 6 7 ...`                    | Atom indices for molecule 2 (reagent 2)                              |
+| `atom1`             | `1`                                  | Atom index in molecule 1 forming the bond                            |
+| `atom2`             | `12`                                 | Atom index in molecule 2 forming the bond                            |
+| `size_molecule`     | `45`                                 | Total number of atoms in the molecule                                |
+| `CC1_in`            | `"1 12"`                             | The atoms that define the C–C bond used for IRC direction            |
+
+---
+
+### Used Paths
+
+| Parameter   | Example                                                                 |
+|------------|-------------------------------------------------------------------------|
+| `rootdir`  | `/rhea/scratch/.../BOLTCAR`                                             |
+| `bin`      | `/vscmnt/.../bin/`                                                      |
+
+---
+
+## 📂 Output
+
+- `BOLTCAR_results.xlsx`: rate constants, Boltzmann weights, energies
+- `plots/`: comparison plots (PNG + combined PDF)
+- `TS_analysis.xlsx`: intermediate summary tables
+
+---
+
+## 📌 Notes
+
+- You must run on a SLURM-based HPC system.
+- Only the first script is launched manually. The rest trigger through SLURM dependencies.
+- All `.sub` scripts contain `module load` statements — change these for your cluster.
+
+---
+
+## 📧 Contact
+
+If you use this tool in a publication, please cite it appropriately. Feel free to open an issue or contact the repository maintainer for questions or feedback.
