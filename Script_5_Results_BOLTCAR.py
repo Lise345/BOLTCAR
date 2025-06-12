@@ -237,6 +237,7 @@ df['Pi Value reverse'] = np.exp(-df['Product Energy'] / (0.001987204259 * 298.15
 
 # Ensure Pi Value is zero if Complex Energy > 1
 df.loc[df['Complex Energy'] > 1, 'Pi Value forward'] = 0
+df.loc[df['Product Energy'] > 1, 'Pi Value reverse'] = 0
 
 # Create a separate column for display in Excel
 df['Pi Value Display F'] = df['Pi Value forward']
@@ -279,8 +280,8 @@ df['Reverse Barrier'] = df['TS Energy'] - df['Product Energy']
 df['Forward Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['Forward Barrier']) * 1000 * 4.184 / (8.314 * 298.15))
 df['Reverse Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['Reverse Barrier']) * 1000 * 4.184 / (8.314 * 298.15))
 
-avg_forward = "No average displayed because the fastest reaction will prevail"
-avg_reverse = "No average displayed because the fastest reaction will prevail"
+avg_forward = "Average not relevant, fastest reaction shown below"
+avg_reverse = "Error: no stable adducts found"
 
 # Ensure valid weights and rates for forward
 valid_forward_mask = pd.notna(df['Forward Rate Constant']) & pd.notna(df['Percentage Forward']) & (df['Percentage Forward'] > 0)
@@ -297,9 +298,21 @@ if valid_reverse_mask.any():
     avg_reverse = "{:.1E}".format(avg_reverse_value)
 
 
+
+lowest_forward = ""
+
+# Check if the avg_forward message was used
+if avg_forward == "Average not relevant, fastest reaction shown below":
+    # Instead of relying on valid_forward_mask, just use all valid Forward Rate Constants
+    valid_forward_rate_mask = pd.notna(df['Forward Rate Constant']) & (df['Forward Rate Constant'] > 0)
+    if valid_forward_rate_mask.any():
+        lowest_forward_value = df.loc[valid_forward_rate_mask, 'Forward Rate Constant'].max()
+        lowest_forward = "{:.1E}".format(lowest_forward_value)
+
+
 avg_data = pd.DataFrame({
-    'Weighted Average Forward rate Constant': [avg_forward],
-    'Weighted Average Reverse rate Constant': [avg_reverse]
+    'Weighted Average Forward rate Constant': [avg_forward, lowest_forward if lowest_forward else None],
+    'Weighted Average Reverse rate Constant': [avg_reverse, None]
 })
 
 # Sort by identification number
