@@ -146,6 +146,7 @@ This file is used throughout the pipeline to control all major inputs and SLURM 
 - You must run on a SLURM-based HPC system.
 - Only the first script is launched manually. The rest trigger through SLURM dependencies.
 - All `.sub` scripts contain `module load` statements — change these for your cluster.
+- A `constraints.inp` file must be added for the CREST search to probe alternative transition states differing solely in the conformational arrangement of their functional groups/side chains.
 
 ---
 
