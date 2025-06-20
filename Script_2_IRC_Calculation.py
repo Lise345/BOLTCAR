@@ -298,20 +298,22 @@ def energycleaner(list):
     maxenergy=max(energies)
     
     indices_to_remove = set()
-    
+    indices_converged = []
     for i, energy_1 in enumerate(energies):
         for j, energy_2 in enumerate(energies):
             if j > i:
                 energy_diff = abs(float(energy_1) - float(energy_2))
                 if 0 <= energy_diff < Energy_threshold:
-                    indices_to_remove.add(j)        
+                    indices_to_remove.add(j)   
+                    indices_converged.append([i,j])
                 elif (float(minenergy)-float(energy_1))>Energy_window:
                     indices_to_remove.add(i)
                 elif (float(minenergy)-float(energy_2))>Energy_window:
                     indices_to_remove.add(j)
     cleanedlist = [logfile for k, logfile in enumerate(list) if k not in indices_to_remove]
     
-    converged_list = [file for k, file in enumerate(list) if k in indices_to_remove]
+    converged_list = [[list[i], list[j]] for i, j in indices_converged]
+
 
     print("Structures that have converged in terms of energy: ")
     print(converged_list)
@@ -367,25 +369,28 @@ def Bcomparer(Bees1, Bees2):
                 tot=tot + sq_incr
     mean=tot/3
     RMSD=mean**(1/2)
+    print(RMSD)
     if RMSD<B_threshold:
         return True
     else:
         return False
                 
 def Bconverge(logfilelist):
-    Bcomp=Bcompiler(logfilelist)
-    
     Bconv=[]
-    for i, log1 in enumerate(Bcomp):
+    B_ind = []
+    for conformers_set in logfilelist:
+        Bcomp=Bcompiler(conformers_set)
+        log1 = Bcomp[0]
+        i = 0
         for j, log2 in enumerate(Bcomp):
             if j>i and log1[0]!=log2[0]:
+                print(log1,log2)
                 outcome=Bcomparer(log1[1], log2[1])
+                print(outcome)
                 if outcome==True and log2[0] not in Bconv:
                     Bconv.append(log2[0])
-    B_ind=logfilelist
-    for log in Bconv:
-        B_ind.remove(log)
-    #print((B_ind, Bconv))
+                elif outcome == False:
+                    B_ind.append(log2[0])     
     return (B_ind, Bconv)
 
 def cleaner(correctTS):
@@ -407,14 +412,13 @@ def cleaner(correctTS):
     print(Bconvergedlist)
     
     IRClist=[]
-    cleanedlogs = [log for log in energycleaned if log not in Bcleaned]
+    cleanedlogs=energycleaned+Bcleaned
     for log in cleanedlogs:
         xyzcorr=log[:-4]+".xyz"
         IRClist.append(xyzcorr)
     print("xyz files systems that are kept for IRC calculations are ")
     print(IRClist)
     return IRClist
-
 
 IRClist=cleaner(correctTS)
 
