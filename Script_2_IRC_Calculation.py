@@ -389,8 +389,9 @@ def Bconverge(logfilelist):
                 print(outcome)
                 if outcome==True and log2[0] not in Bconv:
                     Bconv.append(log2[0])
-                elif outcome == False:
-                    B_ind.append(log2[0])     
+                elif outcome == False and log2[0] not in Bconv and log2[0] not in B_ind:
+                    B_ind.append(log2[0])
+    B_ind = [el for el in B_ind if el not in Bconv]
     return (B_ind, Bconv)
 
 def cleaner(correctTS):
