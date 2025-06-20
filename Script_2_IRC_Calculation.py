@@ -407,7 +407,7 @@ def cleaner(correctTS):
     print(Bconvergedlist)
     
     IRClist=[]
-    cleanedlogs=energycleaned+Bcleaned
+    cleanedlogs = [log for log in energycleaned if log not in Bcleaned]
     for log in cleanedlogs:
         xyzcorr=log[:-4]+".xyz"
         IRClist.append(xyzcorr)
