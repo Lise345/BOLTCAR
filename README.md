@@ -2,7 +2,7 @@
 
 **Boltzmann Optimized Likelihood Transition-state Calculation and Analysis for Reactions**
 
-BOLTCAR is a high-throughput Python-based pipeline to automatically identify, refine, and analyze transition states (TS) and reaction pathways based on Gaussian output files. It extends the FASTCAR approach by integrating conformer pruning (CREST + RMSD), intrinsic reaction coordinate (IRC) validation, stationary point analysis, and Boltzmann-weighted kinetic modeling.
+BOLTCAR is a high-throughput Python-based pipeline to automatically identify, refine, and analyze transition states (TS) and reaction pathways based on Gaussian output files. It extends the FASTCAR approach (DOI	https://doi.org/10.1039/D4CP01721H) by integrating conformer pruning (CREST + RMSD), intrinsic reaction coordinate (IRC) validation, stationary point analysis, and Boltzmann-weighted kinetic modeling.
 
 This code is available via: DOI: 10.5281/zenodo.15647658. It was created by Freija De Vleeschouwer, Killian Delvalle and Lise Vermeersch and must be cited upon use.
 
