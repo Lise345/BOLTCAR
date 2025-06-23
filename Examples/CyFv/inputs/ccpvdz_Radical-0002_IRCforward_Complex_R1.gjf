@@ -1,0 +1,33 @@
+%nprocshared=8
+%mem=16GB
+%chk=ccpvdz_Radical-0002_IRCforward_Complex_R1.chk
+# opt=calcfc freq m062x cc-pvdz empiricaldispersion=gd3 
+
+ccpvdz_Radical-0002_IRCforward_Complex_R1 optfreq
+
+0 2
+ C       1.81208200     -0.21631900      1.41342200
+ F       2.54685200      0.88947700      1.49168300
+ F       0.73046300     -0.09282200      2.15785900
+ F       2.52159300     -1.26281200      1.78039600
+
+--Link1--
+%nprocshared=8
+%mem=16GB
+%chk=ccpvdz_Radical-0002_IRCforward_Complex_R1.chk
+# m062x cc-pvtz empiricaldispersion=gd3 Geom=Checkpoint
+
+ccpvdz_Radical-0002_IRCforward_Complex_R1 E_ccpvtz
+
+0 2
+
+--Link1--
+%nprocshared=8
+%mem=16GB
+%chk=ccpvdz_Radical-0002_IRCforward_Complex_R1.chk
+# m062x cc-pvqz empiricaldispersion=gd3 Geom=Checkpoint
+
+ccpvdz_Radical-0002_IRCforward_Complex_R1 E_ccpvqz
+
+0 2
+
