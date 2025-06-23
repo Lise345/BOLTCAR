@@ -1,0 +1,96 @@
+--------------------------------------------------
+-----------------CREST parameters-----------------
+--------------------------------------------------
+
+CREST version default
+CREST solvent none
+NCI none
+
+--------------------------------------------------
+------------------RMSD parameters-----------------
+--------------------------------------------------
+
+RMSD threshold  0.5
+Energy threshold 0.05
+Energy window 10
+B_threshold 2
+
+--------------------------------------------------
+------------------DFT parameters------------------
+--------------------------------------------------
+
+Experience name FvFv
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Experience name startgeom
+First frequency -483
+Charge 0
+Multiplicity 1
+Functional  m062x
+Dispersion  empiricaldispersion=gd3
+Basis cbs
+DFT solvent  none
+Additional calculation  none
+Excluding nodes 01-06
+Energy of separate reagents -936.284718313083
+Charge 0
+Multiplicity 1
+Time for IRC calcs 40
+Time for stationary calcs 40
+Time for TS calcs 40
+Time for Separate Reagent calcs 40
+
+--------------------------------------------------
+---------------Geometry information---------------
+--------------------------------------------------
+
+molecule1_atoms = 1 2 11 12 13 14 15 16 17 19 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37
+molecule2_atoms = 3 4 5 6 7 8 9 10 18 20 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54
+atom1 = 1
+atom2 = 9
+size_molecule = 54
+CC1_in = "1 9"
+
+--------------------------------------------------
+---------------------Used path--------------------
+--------------------------------------------------
+
+rootdir /rhea/scratch/brussel/105/vsc10536/lise/17_Baproeven/Killian/FASTCAR/FvFv
+bin /vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/
