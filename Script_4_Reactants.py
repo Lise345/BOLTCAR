@@ -172,41 +172,37 @@ def launcher(log_files, parameters_file, dependency_script):
     molecule1_indices, molecule2_indices, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2, basis_1, basis_2, basis_3, functional, dispersion, solvent = read_parameters(parameters_file)
     job_ids = []
 
-    n=0
+    for log_file in log_files:
+        base_name = os.path.splitext(log_file)[0]
+        extracted_atoms = extract_coordinates_from_log(log_file)
+        
+        if not extracted_atoms:
+            print(f"Skipping {log_file}: No coordinates extracted.")
+            continue
 
-    while n < MAX_JOBS:
-        for log_file in log_files:
-            base_name = os.path.splitext(log_file)[0]
-            extracted_atoms = extract_coordinates_from_log(log_file)
-            
-            if not extracted_atoms:
-                print(f"Skipping {log_file}: No coordinates extracted.")
-                continue
+        # Extract molecules
+        molecule1 = [extracted_atoms[i - 1] for i in molecule1_indices]
+        molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
+        
+        # Write input files
+        input_R1 = write_gaussian_input(base_name, molecule1, "R1", charger1, multiplicityr1, functional, basis_1, basis_2, basis_3, dispersion, solvent)
+        input_R2 = write_gaussian_input(base_name, molecule2, "R2", charger2, multiplicityr2, functional, basis_1, basis_2, basis_3, dispersion, solvent)
+        
+        # Create and submit jobs
+        for suffix, input_file in zip(["R1", "R2"], [input_R1, input_R2]):
+            output_file = input_file.replace(".gjf", ".log")
+            job_name = f"{base_name}_{suffix}"
+            script_name = create_submission_script(job_name, input_file, output_file, sr_time)
 
-            # Extract molecules
-            molecule1 = [extracted_atoms[i - 1] for i in molecule1_indices]
-            molecule2 = [extracted_atoms[i - 1] for i in molecule2_indices]
             
-            # Write input files
-            input_R1 = write_gaussian_input(base_name, molecule1, "R1", charger1, multiplicityr1, functional, basis_1, basis_2, basis_3, dispersion, solvent)
-            input_R2 = write_gaussian_input(base_name, molecule2, "R2", charger2, multiplicityr2, functional, basis_1, basis_2, basis_3, dispersion, solvent)
-            
-            # Create and submit jobs
-            for suffix, input_file in zip(["R1", "R2"], [input_R1, input_R2]):
-                output_file = input_file.replace(".gjf", ".log")
-                job_name = f"{base_name}_{suffix}"
-                script_name = create_submission_script(job_name, input_file, output_file, sr_time)
-
-                
-                result = subprocess.run(f"sbatch {script_name}", shell=True, stdout=subprocess.PIPE, text=True)
-                if result.returncode == 0:
-                    job_id = re.search(r'(\d+)', result.stdout)
-                    if job_id:
-                        job_ids.append(job_id.group(1))
-                        print(f"Submitted job {job_name} with ID {job_id.group(1)}")
-                        n+=1
-                else:
-                    print(f"Failed to submit job {job_name}: {result.stderr}")
+            result = subprocess.run(f"sbatch {script_name}", shell=True, stdout=subprocess.PIPE, text=True)
+            if result.returncode == 0:
+                job_id = re.search(r'(\d+)', result.stdout)
+                if job_id:
+                    job_ids.append(job_id.group(1))
+                    print(f"Submitted job {job_name} with ID {job_id.group(1)}")
+            else:
+                print(f"Failed to submit job {job_name}: {result.stderr}")
 
     # Launch dependent script
     if job_ids:
