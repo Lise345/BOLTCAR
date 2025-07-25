@@ -9,7 +9,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 #with open('./parameters.txt', 'r') as parameters:
     #file_content = parameters.read()
 
-    #energy_of_separate_reagents_match = re.search(r'Energy of separate reagents (.+)', file_content)
+    #structurename = re.search(r'Energy of separate reagents (.+)', file_content)
     #energy_of_separate_reagents = float(energy_of_separate_reagents_match.group(1))
 
 
@@ -49,16 +49,20 @@ def extract_values(file_path):
                         pvdz_energy = last_scf_done
                     if found_pvtz and pvtz_energy is None:
                         pvtz_energy = last_scf_done
-                    if found_pvqz and pvqz_energy is None:
+                    if found_pvqz:
                         pvqz_energy = last_scf_done
 
             # Detect basis set sections
-            if 'm062x cc-pvdz' in line:
+            if 'opt=calcfc' and 'pvdz' in line:
                 found_pvdz = True
-            if 'm062x cc-pvtz' in line:
+            if 'opt=calcfc' and 'pvtz' in line:
                 found_pvtz = True
-            if 'm062x cc-pvqz' in line:
+            if 'opt=calcfc' and 'pvqz' in line:
                 found_pvqz = True
+            else:
+                if 'opt=calcfc':
+                    found_pvqz = True
+                
 
             if 'Thermal correction to Gibbs Free Energy=' in line:
                 try:
@@ -101,8 +105,15 @@ directory = './'
 data_dict = {}
 
 for filename in os.listdir(directory):
-    if filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log'):
-        identification_number = filename.split('-')[1].split('_')[0]
+    if filename.endswith('Complex.log') or filename.endswith('Complex_R1.log') or filename.endswith('Complex_R2.log') or filename.endswith('Product.log') or filename.endswith('SP.log') or ('IRC' not in filename and filename.endswith('.log')):
+        base_name = os.path.splitext(filename)[0]  # Removes .log
+        parts = base_name.split('-')
+
+        if len(parts) > 1:
+            identification_number = parts[1].split('_')[0]
+        else:
+            print(f"⚠️ Could not extract ID from filename: {filename}")
+            continue
         file_path = os.path.join(directory, filename)
         
         pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = extract_values(file_path)
@@ -155,16 +166,16 @@ for filename in os.listdir(directory):
                 })
         else:
             # New logic when basis_1 is not CBS
-            complex_basis_energy_label = f'Complex {basis_1} Energy'
-            ts_basis_energy_label = f'TS {basis_1} Energy'
-            product_basis_energy_label = f'Product {basis_1} Energy'
+            complex_basis_energy_label = f'Complex PVQZ Energy'
+            ts_basis_energy_label = f'TS PVQZ Energy'
+            product_basis_energy_label = f'Product PVQZ Energy'
 
             if filename.endswith('Complex.log'):
                 data_dict[identification_number].update({
                     complex_basis_energy_label: pvqz_energy,  # Assign PVQZ energy to Complex basis_1 energy
                     'Complex Gibbs Correction': gibbs_free_energy,
                 })
-            elif filename.endswith('SP.log'):
+            elif 'IRC' not in filename and filename.endswith('.log'):
                 data_dict[identification_number].update({
                     ts_basis_energy_label: pvqz_energy,  # Assign PVQZ energy to TS basis_1 energy
                     'TS Gibbs Correction': gibbs_free_energy,
@@ -173,6 +184,16 @@ for filename in os.listdir(directory):
                 data_dict[identification_number].update({
                     product_basis_energy_label: pvqz_energy,  # Assign PVQZ energy to Product basis_1 energy
                     'Product Gibbs Correction': gibbs_free_energy,
+                })
+            elif filename.endswith('Complex_R1.log'):
+                data_dict[identification_number].update({
+                    'ComplexR1 PVQZ Energy': pvqz_energy,  # Assign PVQZ energy to ComplexR1 basis_1 energy
+                    'ComplexR1 Gibbs Correction': gibbs_free_energy,
+                })
+            elif filename.endswith('Complex_R2.log'):
+                data_dict[identification_number].update({
+                    'ComplexR2 PVQZ Energy': pvqz_energy,  # Assign PVQZ energy to ComplexR2 basis_1 energy
+                    'ComplexR2 Gibbs Correction': gibbs_free_energy,
                 })
 
 # Create DataFrame dynamically
@@ -203,13 +224,15 @@ if use_cbs_logic:
         / (df['Product PVDZ Energy'] + df['Product PVQZ Energy'] - 2 * df['Product PVTZ Energy'])
     )
 else:
-    complex_basis_energy_label = f'Complex {basis_1} Energy'
-    ts_basis_energy_label = f'TS {basis_1} Energy'
-    product_basis_energy_label = f'Product {basis_1} Energy'
+    complex_basis_energy_label = f'Complex PVQZ Energy'
+    ts_basis_energy_label = f'TS PVQZ Energy'
+    product_basis_energy_label = f'Product PVQZ Energy'
 
     df['Extrapolated Complex Energy'] = df[complex_basis_energy_label]
     df['Extrapolated TS Energy'] = df[ts_basis_energy_label]
     df['Extrapolated Product Energy'] = df[product_basis_energy_label]
+    df['Extrapolated Reagent 1 Energy'] = df.get('ComplexR1 PVQZ Energy', np.nan)
+    df['Extrapolated Reagent 2 Energy'] = df.get('ComplexR2 PVQZ Energy', np.nan)
 
 df['energy_of_separate_reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
 df['Minimal energy_of_separate_reagents'] = df['energy_of_separate_reagents'].min()
@@ -224,8 +247,12 @@ df['TS Energy'] = pd.to_numeric(df['TS Energy'], errors='coerce').fillna(0)
 df['Product Energy'] = pd.to_numeric(df['Product Energy'], errors='coerce').fillna(0)
 
 
-# List of required energy columns for Pi calculation
-required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy', 'TS PVDZ Energy', 'TS PVTZ Energy', 'TS PVQZ Energy', 'Product PVDZ Energy', 'Product PVTZ Energy', 'Product PVQZ Energy']
+if use_cbs_logic:
+    # List of required energy columns for Pi calculation
+    required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy', 'TS PVDZ Energy', 'TS PVTZ Energy', 'TS PVQZ Energy', 'Product PVDZ Energy', 'Product PVTZ Energy', 'Product PVQZ Energy']
+else:
+    # List of required energy columns for Pi calculation when not using CBS logic
+    required_columns = ['Extrapolated Complex Energy', 'Extrapolated TS Energy', 'Extrapolated Product Energy']
 
 # Set Complex Energy to NaN if any required energy value is missing
 df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
@@ -246,8 +273,6 @@ df['Pi Value Display R'] = df['Pi Value reverse']
 # Replace NaN values with "Calculation failed" ONLY in the Excel output column
 df['Pi Forward'] = df['Pi Value Display F'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
 df['Pi Reverse'] = df['Pi Value Display R'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
-
-
 
 # Convert Pi columns to numeric safely (invalid entries become NaN)
 df['Pi Forward Numeric'] = pd.to_numeric(df['Pi Forward'], errors='coerce')
@@ -302,7 +327,7 @@ if valid_reverse_mask.any():
 lowest_forward = ""
 
 # Check if the avg_forward message was used
-if avg_forward == "Average not relevant, fastest reaction shown below":
+if avg_forward == "Average not relevant, fastest reaction shown in Excel":
     # Instead of relying on valid_forward_mask, just use all valid Forward Rate Constants
     valid_forward_rate_mask = pd.notna(df['Forward Rate Constant']) & (df['Forward Rate Constant'] > 0)
     if valid_forward_rate_mask.any():
@@ -362,8 +387,6 @@ else:
 
 # Ensure valid numeric values before plotting
 df_filtered = df_filtered.dropna(subset=['Complex Energy', 'TS Energy', 'Product Energy'])
-
-
 
 # Define y-limits with margin
 min_energy = min(df_filtered['Complex Energy'].min(), df_filtered['TS Energy'].min(), df_filtered['Product Energy'].min()) - 1
