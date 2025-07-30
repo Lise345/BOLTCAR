@@ -5,22 +5,24 @@
 #SBATCH --output=2_IRCcalc.logfile
 #SBATCH --time=01:00:00
 
-#Defining Gaussian Parameters
-export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH
+# Read parameters from file
+rootdir=$(grep '^rootdir' parameters.txt | awk '{print $2}')
+bindir=$(grep '^bin' parameters.txt | awk '{print $2}')
 
-#Defining Gaussian Parameters
-cd $VSC_SCRATCH/lise/13_Ondemand/Fulvenes/Fullstructure/P_CyFv/BOLTCAR
+# Export bin directory from parameters
+export PATH=$bindir:$PATH
 
-#Loading modules
+# Move to working directory
+cd "$rootdir" || { echo "Error: Cannot cd to rootdir"; exit 1; }
+
+# Loading modules
 module load sPyRMSD/0.8.0-foss-2023a
 module load openpyxl/3.1.2-GCCcore-12.3.0
 
-#Launching calculation
-cp ./Script_2_IRC_Calculation.py ./CREST/TS-CREST/Script_2_IRC_Calculation.py
-cp ./parameters.txt ./CREST/TS-CREST/parameters.txt
-cd CREST/
-cd TS-CREST/
+# Launching calculation
+cp ./Script_2_IRC_Calculation.py "$rootdir"/CREST/TS-CREST/Script_2_IRC_Calculation.py
+cp ./parameters.txt "$rootdir"/CREST/TS-CREST/parameters.txt
+
+cd "$rootdir"/CREST/TS-CREST/
 chmod 777 Script_2_IRC_Calculation.py
 python Script_2_IRC_Calculation.py
-
-
