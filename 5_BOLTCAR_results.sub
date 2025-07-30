@@ -5,44 +5,48 @@
 #SBATCH --output=5_FastcarResults.logfile
 #SBATCH --time=01:00:00
 
-#Defining Folders
-cd $VSC_SCRATCH/Changetoyourfolder
+# Read parameters from file
+rootdir=$(grep '^rootdir' parameters.txt | awk '{print $2}')
+bindir=$(grep '^bin' parameters.txt | awk '{print $2}')
 
-MAIN_DIR="$VSC_SCRATCH/Changetoyourfolder"
+# Export bin directory from parameters
+export PATH=$bindir:$PATH
 
+# Define working directories
+MAIN_DIR="$rootdir"
 TS_CREST_DIR="$MAIN_DIR/CREST/TS-CREST"
-
 RESULTS_DIR="$MAIN_DIR/Results"
 
+# Change to root directory
+cd "$MAIN_DIR" || { echo "Error: Cannot cd to rootdir"; exit 1; }
 
-#Defining Gaussian Parameters
-export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH
-
-#Loading modules
+# Load modules
 module load sPyRMSD/0.8.0-foss-2023a
 module load openpyxl/3.1.2-GCCcore-12.3.0
 module load matplotlib/3.7.2-gfbf-2023a
 
-#Launching calculation
-cp Script_5_Results_BOLTCAR.py ./CREST/TS-CREST/Script_5_Results_BOLTCAR.py
-mkdir -p Results
-mkdir -p Results/inputs
-mkdir -p Results/outputs
-mkdir -p Results/submits
-cd CREST/
-cd TS-CREST/
+# Launching calculation
+cp ./Script_5_Results_BOLTCAR.py "$TS_CREST_DIR/Script_5_Results_BOLTCAR.py"
+cp ./parameters.txt "$TS_CREST_DIR/parameters.txt"
+
+mkdir -p "$RESULTS_DIR"
+mkdir -p "$RESULTS_DIR/inputs"
+mkdir -p "$RESULTS_DIR/outputs"
+mkdir -p "$RESULTS_DIR/submits"
+
+cd "$TS_CREST_DIR" || { echo "Error: Cannot cd to $TS_CREST_DIR"; exit 1; }
 chmod 777 Script_5_Results_BOLTCAR.py
 python Script_5_Results_BOLTCAR.py
-cp ./BOLTCAR_results.xlsx ../../Results/BOLTCAR_results.xlsx
-cp ./TS_analysis.xlsx ../../Results/TS_analysis.xlsx
-rm *.chk
 
-cd ../..
+cp ./BOLTCAR_results.xlsx "$RESULTS_DIR/BOLTCAR_results.xlsx"
+cp ./TS_analysis.xlsx "$RESULTS_DIR/TS_analysis.xlsx"
+rm -f *.chk
 
-cp $TS_CREST_DIR/*.log $RESULTS_DIR/outputs
-cp $TS_CREST_DIR/*.logfile $RESULTS_DIR/outputs
-cp $TS_CREST_DIR/*.gjf $RESULTS_DIR/inputs
-cp $TS_CREST_DIR/*.sub $RESULTS_DIR/submits
-cp -r $TS_CREST_DIR/plots $RESULTS_DIR/
+cd "$MAIN_DIR" || { echo "Error: Cannot cd back to $MAIN_DIR"; exit 1; }
 
-
+# Copy additional files to results
+cp "$TS_CREST_DIR"/*.log "$RESULTS_DIR/outputs"
+cp "$TS_CREST_DIR"/*.logfile "$RESULTS_DIR/outputs"
+cp "$TS_CREST_DIR"/*.gjf "$RESULTS_DIR/inputs"
+cp "$TS_CREST_DIR"/*.sub "$RESULTS_DIR/submits"
+cp -r "$TS_CREST_DIR/plots" "$RESULTS_DIR/"
