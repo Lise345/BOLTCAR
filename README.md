@@ -35,10 +35,11 @@ Ensure you have:
 You need a Gaussian `.out` file for a **transition state** geometry (with at least one imaginary frequency):
 
 ```bash
-python Script_1_CREST_INPUT.py your_TS_file.out
+sbatch 1_script.sub NAMEOFYOURFILE.out
 ```
 
 This will:
+- Make a new folder to run your calculations with the name of the file
 - Extract geometry and frequency
 - Update `parameters.txt` with inferred properties
 - Create and launch `CREST` and pruning jobs via `Script_1_RMSD_INPUT.py`
@@ -60,16 +61,20 @@ Each script then triggers the next via `.sub` files and job dependencies.
 
 ---
 
-## 🧾 Input File
+## 🧾 Input Files
 
 You must provide a Gaussian `.out` file with:
 - A complete frequency calculation
 - Geometry and standard orientation
 - Charge and multiplicity
 
+You must provide a constraints_NAMEOFTHEFILE.inp file, used to perform the CREST search.
+
+You must provide a parameters_NAMEOFTHEFILE.txt file, see below for more information.
+
 ---
 
-## ⚙️ Configuration: `parameters.txt`
+## ⚙️ Configuration: `parameters_NAMEOFTHEFILE.txt`
 
 This file is used throughout the pipeline to control all major inputs and SLURM parameters.
 
