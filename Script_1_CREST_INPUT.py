@@ -28,14 +28,22 @@ with open('./parameters.txt', 'r') as parameters:
 
     size_molecule = re.search(r'size_molecule\s*=\s*(\S+)', file_content)
     size_molecule = int(size_molecule.group(1))  # Adjust for zero-based indexing
+    
+    # Extract rootdir from parameters.txt
+    match_rootdir = re.search(r'rootdir\s+(\S+)', file_content)
+    if not match_rootdir:
+        print("Error: Could not find 'rootdir' in parameters.txt.")
+        sys.exit(1)
+    rootdir = match_rootdir.group(1)
+
 
 # Get the file name from the command-line argument
 file_name = sys.argv[1]
 base_name = os.path.splitext(file_name)[0]
 
 def lastgeometry(filename):
-    with open(filename, "r") as readfile:
-        lines = readfile.readlines()
+    with open(os.path.join('..', file_name), 'r') as f:
+        lines = f.readlines()
         indices = []
         
         # Find all indices where "Standard orientation" appears
@@ -100,7 +108,7 @@ def convert_gjf_to_xyz(filename):
     return 'Done'
 
 # Check if calculation ended properly
-with open(file_name, 'r') as f:
+with open(os.path.join('..', file_name), 'r') as f:
     file_content = f.read()
 
     if 'Normal termination of Gaussian 16' in file_content:
@@ -302,7 +310,7 @@ with open('script_CREST.sub', 'w') as file:
     file.write(f'#SBATCH --output=CREST_{base_name}.logfile \n')
     file.write('#SBATCH --time=48:00:00 \n')
     file.write('\n')
-    file.write('cd ${SLURM_SUBMIT_DIR} \n')
+    file.write(f'cd {rootdir} \n')
     file.write('\n')
     file.write('#Loading modules \n')
     file.write('module load intel/2023a \n')
@@ -326,11 +334,11 @@ with open('script_CREST.sub', 'w') as file:
 
 
 # Construction of CREST folder
-os.mkdir('CREST')
+os.makedirs('CREST', exist_ok=True)
 shutil.copy('struc.xyz', 'CREST/struc.xyz')
 shutil.copy('parameters.txt', 'CREST/parameters.txt')
 shutil.copy('script_CREST.sub', 'CREST/script_CREST.sub')
-shutil.copy('Script_1_RMSD_INPUT.py', 'CREST/Script_1_RMSD_INPUT.py')
+shutil.copy('../Script_1_RMSD_INPUT.py', 'CREST/Script_1_RMSD_INPUT.py')
 shutil.copy('constraints.inp', 'CREST/constraints.inp')
 
 # Launch calculation
