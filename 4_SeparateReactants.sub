@@ -5,18 +5,23 @@
 #SBATCH --output=4_SeparateReactants.logfile
 #SBATCH --time=01:00:00
 
-#Opening correct folder
-cd $VSC_SCRATCH/lise/17_Baproeven/Killian/FASTCAR/BOLTCAR
+# Read parameters from file
+rootdir=$(grep '^rootdir' parameters.txt | awk '{print $2}')
+bindir=$(grep '^bin' parameters.txt | awk '{print $2}')
 
-#Defining Gaussian Parameters
-export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH
+# Export bin directory from parameters
+export PATH=$bindir:$PATH
 
-#Loading modules
+# Move to working directory
+cd "$rootdir" || { echo "Error: Cannot cd to rootdir"; exit 1; }
+
+# Loading modules
 module load openpyxl/3.1.2-GCCcore-12.3.0
 
-#Launching calculation
-cp Script_4_Reactants.py ./CREST/TS-CREST/Script_4_Reactants.py
-cd CREST/
-cd TS-CREST/
+# Launching calculation
+cp ./Script_4_Reactants.py "$rootdir"/CREST/TS-CREST/Script_4_Reactants.py
+cp ./parameters.txt "$rootdir"/CREST/TS-CREST/parameters.txt
+
+cd "$rootdir"/CREST/TS-CREST/
 chmod 777 Script_4_Reactants.py
 python Script_4_Reactants.py
