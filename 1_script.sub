@@ -2,19 +2,55 @@
 #SBATCH --job-name=FASTCAR_sub
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=1_FASTCAR_sub.logfile
-#SBATCH --time=10:00:00
+#SBATCH --time=01:00:00
 
-#Defining Gaussian Parameters
-export PATH=/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin/:$PATH
+# Get input file from sbatch argument
+inputfile="$1"
 
-#Loading modules
+# Check for input
+if [ -z "$inputfile" ]; then
+  echo "Error: No input file provided. Usage: sbatch 1_runscript.sh filename.out"
+  exit 1
+fi
+
+# Get base name and create folder
+basename="${inputfile%.*}"
+mkdir -p "$basename"
+rootdir="$(realpath "$basename")"
+bindir="/vscmnt/brussel_pixiu_home/_user_brussel/105/vsc10536/bin"
+
+
+# Redirect output and error to logfile inside the folder
+logfile="$rootdir/1_FASTCAR_sub.logfile"
+exec > "$logfile" 2>&1
+
+# Export and move
+export PATH=$bindir:$PATH
+cd "$rootdir" || { echo "Error: Cannot cd to $rootdir"; exit 1; }
+
+cp ../parameters_"$basename".txt ./parameters.txt 
+cp ../constraints_"$basename".inp ./constraints.inp
+cp ../2_IRC_calculator.sub ./
+cp ../Script_2_IRC_Calculation.py ./
+cp ../3_StationaryPoints_calculator.py ./
+cp ../Script_3_StationaryPoints.py ./
+cp ../4_SeparateReactants.sub ./
+cp ../Script_4_Reactants.py ./
+cp ../5_BOLTCAR_results.sub ./
+cp ../Script_5_Results_BOLTCAR.py ./
+
+# Write parameters
+echo "rootdir $rootdir" >> parameters.txt
+echo "bin $bindir" >> parameters.txt
+echo "filename $inputfile" >> parameters.txt
+
+
+# Load modules
 module load intel/2023a
 module load AMS/2024.102-iimpi-2023a-intelmpi
 module load SciPy-bundle/2023.07-gfbf-2023a
 module load sPyRMSD/0.8.0-foss-2023a
 module load OpenBabel/3.1.1-gompi-2023a
 
-#Launching calculation
-./Script_1_CREST_INPUT.py NAMEOFTHEFILE.out 
-
+# Launch calculation
+../Script_1_CREST_INPUT.py "$inputfile"
