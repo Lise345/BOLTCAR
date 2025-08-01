@@ -32,7 +32,7 @@ cp ../parameters_"$basename".txt ./parameters.txt
 cp ../constraints_"$basename".inp ./constraints.inp
 cp ../2_IRC_calculator.sub ./
 cp ../Script_2_IRC_Calculation.py ./
-cp ../3_StationaryPoints_calculator.py ./
+cp ../3_StationaryPoints_calculator.sub ./
 cp ../Script_3_StationaryPoints.py ./
 cp ../4_SeparateReactants.sub ./
 cp ../Script_4_Reactants.py ./
