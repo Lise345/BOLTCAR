@@ -398,6 +398,7 @@ def launch_dependent_job():
         dependency_command = [
             "sbatch",
             f"--dependency=afterany:{dependency_str}",
+            f"--chdir={rootdir}",
             extractor_script
         ]
         result = subprocess.run(
