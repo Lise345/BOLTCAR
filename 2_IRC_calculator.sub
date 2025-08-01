@@ -20,8 +20,8 @@ module load sPyRMSD/0.8.0-foss-2023a
 module load openpyxl/3.1.2-GCCcore-12.3.0
 
 # Launching calculation
-cp ./Script_2_IRC_Calculation.py "$rootdir"/CREST/TS-CREST/Script_2_IRC_Calculation.py
-cp ./parameters.txt "$rootdir"/CREST/TS-CREST/parameters.txt
+cp ./Script_2_IRC_Calculation.py "$rootdir"/TS-CREST/Script_2_IRC_Calculation.py
+cp ./parameters.txt "$rootdir"/TS-CREST/parameters.txt
 
 cd "$rootdir"/CREST/TS-CREST/
 chmod 777 Script_2_IRC_Calculation.py
