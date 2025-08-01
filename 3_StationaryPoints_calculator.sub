@@ -5,6 +5,10 @@
 #SBATCH --output=3_StatPoint.logfile
 #SBATCH --time=01:00:00
 
+# Move to working directory
+cd "$rootdir" || { echo "Error: Cannot cd to rootdir"; exit 1; }
+
+
 # Read parameters from file
 rootdir=$(grep '^rootdir' parameters.txt | awk '{print $2}')
 bindir=$(grep '^bin' parameters.txt | awk '{print $2}')
@@ -12,16 +16,17 @@ bindir=$(grep '^bin' parameters.txt | awk '{print $2}')
 # Export bin directory from parameters
 export PATH=$bindir:$PATH
 
-# Move to working directory
-cd "$rootdir" || { echo "Error: Cannot cd to rootdir"; exit 1; }
-
 # Loading modules
 module load sPyRMSD/0.8.0-foss-2023a
 module load openpyxl/3.1.2-GCCcore-12.3.0
 
 # Launching calculation
-cp ./Script_3_StationaryPoints.py "$rootdir"/CREST/TS-CREST/Script_3_StationaryPoints.py
-cp ./parameters.txt "$rootdir"/CREST/TS-CREST/parameters.txt
+cp ./Script_3_StationaryPoints.py "$rootdir"/TS-CREST/Script_3_StationaryPoints.py
+cp ./parameters.txt "$rootdir"/TS-CREST/parameters.txt
+
+
+# Move to working directory
+cd "$rootdir"/TS-CREST || { echo "Error: Cannot cd to rootdir"; exit 1; }
 
 cd "$rootdir"/CREST/TS-CREST/
 chmod 777 Script_3_StationaryPoints.py
