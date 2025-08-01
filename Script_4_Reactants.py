@@ -208,7 +208,7 @@ def launcher(log_files, parameters_file, dependency_script):
     if job_ids:
         dependency_str = ":".join(job_ids)
 
-        command = f"sbatch --dependency=afterany:{dependency_str} {dependency_script}"
+        command = f"sbatch --dependency=afterany:{dependency_str} --chdir={rootdir} {dependency_script}"
         
         result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, text=True)
         if result.returncode == 0:
