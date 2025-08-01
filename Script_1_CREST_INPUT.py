@@ -42,7 +42,7 @@ file_name = sys.argv[1]
 base_name = os.path.splitext(file_name)[0]
 
 def lastgeometry(filename):
-    with open(os.path.join('..', file_name), 'r') as f:
+    with open(os.path.join('.', file_name), 'r') as f:
         lines = f.readlines()
         indices = []
         
@@ -108,7 +108,7 @@ def convert_gjf_to_xyz(filename):
     return 'Done'
 
 # Check if calculation ended properly
-with open(os.path.join('..', file_name), 'r') as f:
+with open(os.path.join('.', file_name), 'r') as f:
     file_content = f.read()
 
     if 'Normal termination of Gaussian 16' in file_content:
@@ -344,7 +344,6 @@ shutil.copy('constraints.inp', 'CREST/constraints.inp')
 # Launch calculation
 os.chdir('CREST')
 os.system(f'sbatch script_CREST.sub')
-
 
 
 
