@@ -289,9 +289,10 @@ if ' CREST terminated normally.' in last_line:
         dependency_command = [
             "sbatch",
             f"--dependency=afterany:{dependency_str}",
+            f"--chdir={rootdir}",       
             extractor_script
         ]
-    
+            
         result = subprocess.run(dependency_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         if result.returncode == 0:
             print(f"Extractor job submitted successfully: {result.stdout}")
