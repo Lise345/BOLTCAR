@@ -14,7 +14,7 @@ export PATH=$bindir:$PATH
 
 # Define working directories
 MAIN_DIR="$rootdir"
-TS_CREST_DIR="$MAIN_DIR/CREST/TS-CREST"
+TS_CREST_DIR="$MAIN_DIR/TS-CREST"
 RESULTS_DIR="$MAIN_DIR/Results"
 
 # Change to root directory
