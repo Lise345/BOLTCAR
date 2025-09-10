@@ -314,9 +314,7 @@ with open('script_CREST.sub', 'w') as file:
     file.write(f'#SBATCH --output=CREST_{base_name}.logfile\n')
     file.write('#SBATCH --time=48:00:00\n')
     file.write('\n')
-    file.write('set -euo pipefail\n')
     file.write(f'cd "{rootdir}"\n')
-    file.write('export OMP_NUM_THREADS=${SLURM_NTASKS:-6}\n')  # let xtb/crest use 6 threads
     file.write('\n')
     file.write('# --- Modules strictly needed for xtb/CREST ---\n')
     file.write('source ../activate_venv.sh\n')
@@ -332,10 +330,8 @@ with open('script_CREST.sub', 'w') as file:
     file.write('\n')
     file.write('# --- Python post-step in venv via run.sh ---\n')
     file.write('cp ../Script_1_RMSD_INPUT.py ./\n')
-    file.write('cp parameters.txt ./\n')
-    file.write(f'RUNSH="{runsh_path}"\n')
-    file.write('if [ ! -x "$RUNSH" ]; then echo "Error: run.sh not found at $RUNSH"; exit 1; fi\n')
-    file.write('$RUNSH python Script_1_RMSD_INPUT.py\n')
+    file.write('dos2unix Script_1_RMSD_INPUT.py\n')
+    file.write('./Script_1_RMSD_INPUT.py\n')
     file.write('\n')
 
 
@@ -351,6 +347,7 @@ shutil.copy('constraints.inp', 'CREST/constraints.inp')
 # Launch calculation
 os.chdir('CREST')
 os.system(f'sbatch script_CREST.sub')
+
 
 
 
