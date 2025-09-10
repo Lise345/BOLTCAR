@@ -4,6 +4,8 @@
 #SBATCH --ntasks=1
 #SBATCH --time=01:00:00
 
+source ./activate_venv.sh  # no args = just activate
+
 # Get input file from sbatch argument
 inputfile="$1"
 
@@ -47,11 +49,11 @@ echo "filename $inputfile" >> parameters.txt
 
 
 # Load modules
-module load intel/2023a
-module load AMS/2024.102-iimpi-2023a-intelmpi
-module load SciPy-bundle/2023.07-gfbf-2023a
-module load sPyRMSD/0.8.0-foss-2023a
-module load OpenBabel/3.1.1-gompi-2023a
+#module load intel/2023a
+#module load AMS/2024.102-iimpi-2023a-intelmpi
+#module load SciPy-bundle/2023.07-gfbf-2023a
+#module load sPyRMSD/0.8.0-foss-2023a
+#module load OpenBabel/3.1.1-gompi-2023a
 
-# Launch calculation
-../Script_1_CREST_INPUT.py "$inputfile"
+# Launch calculation inside venv
+python ../Script_1_CREST_INPUT.py "$inputfile"
