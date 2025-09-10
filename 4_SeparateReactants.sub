@@ -5,6 +5,8 @@
 #SBATCH --output=4_SeparateReactants.logfile
 #SBATCH --time=01:00:00
 
+source ../activate_venv.sh
+
 # Read parameters from file
 rootdir=$(grep '^rootdir' parameters.txt | awk '{print $2}')
 bindir=$(grep '^bin' parameters.txt | awk '{print $2}')
@@ -16,7 +18,7 @@ export PATH=$bindir:$PATH
 cd "$rootdir" || { echo "Error: Cannot cd to rootdir"; exit 1; }
 
 # Loading modules
-module load openpyxl/3.1.2-GCCcore-12.3.0
+#module load openpyxl/3.1.2-GCCcore-12.3.0
 
 # Launching calculation
 cp ./Script_4_Reactants.py "$rootdir"/TS-CREST/Script_4_Reactants.py
