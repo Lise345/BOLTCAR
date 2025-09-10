@@ -5,6 +5,8 @@
 #SBATCH --output=3_StatPoint.logfile
 #SBATCH --time=01:00:00
 
+source ../activate_venv.sh
+
 # Move to working directory
 cd "$rootdir" || { echo "Error: Cannot cd to rootdir"; exit 1; }
 
