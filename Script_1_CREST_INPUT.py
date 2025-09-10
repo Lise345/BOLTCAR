@@ -300,37 +300,44 @@ with open('parameters.txt', 'w') as file:
     file.write(modified_content)
 
 
-# Construction of script.sub
+# Ensure run.sh is in rootdir before submitting (do this once in your driver)
+shutil.copy('../run.sh', 'run.sh')  # so it's at <rootdir>/run.sh
+
 multiplicityCREST = multiplicity - 1
+runsh_path = os.path.join(rootdir, 'run.sh')
+
 with open('script_CREST.sub', 'w') as file:
     file.write('#!/bin/sh\n')
-    file.write(f'#SBATCH --job-name=CREST_{base_name} \n')
-    file.write('#SBATCH --nodes=1 \n')
-    file.write('#SBATCH --ntasks=6 \n')
-    file.write(f'#SBATCH --output=CREST_{base_name}.logfile \n')
-    file.write('#SBATCH --time=48:00:00 \n')
+    file.write(f'#SBATCH --job-name=CREST_{base_name}\n')
+    file.write('#SBATCH --nodes=1\n')
+    file.write('#SBATCH --ntasks=6\n')
+    file.write(f'#SBATCH --output=CREST_{base_name}.logfile\n')
+    file.write('#SBATCH --time=48:00:00\n')
     file.write('\n')
-    file.write(f'cd {rootdir} \n')
+    file.write('set -euo pipefail\n')
+    file.write(f'cd "{rootdir}"\n')
+    file.write('export OMP_NUM_THREADS=${SLURM_NTASKS:-6}\n')  # let xtb/crest use 6 threads
     file.write('\n')
-    file.write('#Loading modules \n')
-    file.write('module load intel/2023a \n')
-    file.write('module load AMS/2024.102-iimpi-2023a-intelmpi \n')
-    file.write('module load sPyRMSD/0.8.0-foss-2023a\n')
-    file.write('module load OpenBabel/3.1.1-gompi-2023a\n')
-    file.write('module load SciPy-bundle/2023.07-gfbf-2023a\n')
+    file.write('# --- Modules strictly needed for xtb/CREST ---\n')
+    file.write('source ../activate_venv.sh\n')
+    file.write('module load intel/2023a\n')  # keep if your xtb/CREST builds need this
+    file.write('module load xtb/6.6.1-gfbf-2023a\n')
+    file.write('module load CREST/2.12-gfbf-2023a\n')
     file.write('\n')
-    file.write('#Launching calculation \n')
+    file.write('# --- CREST run ---\n')
+    file.write('xtb struc.xyz --opt extreme --gfn 2 --input constraints.inp > xtb.out\n')
+    file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} '
+               '--cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
+    file.write('crest coord -cregen crest_conformers.xyz -ewin 30\n')
     file.write('\n')
-    file.write(f'module load xtb/6.6.1-gfbf-2023a\n')
-    file.write(f'module load CREST/2.12-gfbf-2023a\n')
-    file.write(f'xtb struc.xyz --opt extreme --gfn 2 --input constraints.inp > xtb.out\n')
-    file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')	
-    #file.write(f'crest struc.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} --cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
-    file.write(f'crest coord -cregen crest_conformers.xyz -ewin 30\n')
-    file.write(f'cp ../Script_1_RMSD_INPUT.py ./\n')
-    file.write(f'dos2unix Script_1_RMSD_INPUT.py\n')
-    file.write(f'./Script_1_RMSD_INPUT.py\n')
+    file.write('# --- Python post-step in venv via run.sh ---\n')
+    file.write('cp ../Script_1_RMSD_INPUT.py ./\n')
+    file.write('cp parameters.txt ./\n')
+    file.write(f'RUNSH="{runsh_path}"\n')
+    file.write('if [ ! -x "$RUNSH" ]; then echo "Error: run.sh not found at $RUNSH"; exit 1; fi\n')
+    file.write('$RUNSH python Script_1_RMSD_INPUT.py\n')
     file.write('\n')
+
 
 
 # Construction of CREST folder
