@@ -28,6 +28,5 @@ cp ./parameters.txt "$rootdir"/TS-CREST/parameters.txt
 # Move to working directory
 cd "$rootdir"/TS-CREST || { echo "Error: Cannot cd to rootdir"; exit 1; }
 
-cd "$rootdir"/CREST/TS-CREST/
 chmod 777 Script_3_StationaryPoints.py
 python Script_3_StationaryPoints.py
