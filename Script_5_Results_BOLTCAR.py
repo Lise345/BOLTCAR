@@ -236,6 +236,7 @@ else:
 
 df['energy_of_separate_reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
 df['Minimal energy_of_separate_reagents'] = df['energy_of_separate_reagents'].min()
+df['delta energy of separate reagents'] = df['energy_of_separate_reagents'] - df['Minimal energy_of_separate_reagents']
 
 df['Complex Energy'] = 627.5 * (df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] - df['Minimal energy_of_separate_reagents'])
 df['TS Energy'] = 627.5 * (df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] - df['Minimal energy_of_separate_reagents'])
@@ -257,14 +258,33 @@ else:
 # Set Complex Energy to NaN if any required energy value is missing
 df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
 
-# Compute Pi Value numerically where all values exist
-df['Pi Value forward'] = np.exp(-df['Complex Energy'] / (0.001987204259 * 298.15))
 
+### Calculating percentages for Boltzmann ###
+
+# Constants
+R = 0.001987204259   # kcal·mol^-1·K^-1
+T = 298.15
+RT = R * T
+
+
+# Ensure numeric
+df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce')
+df['delta energy of separate reagents'] = pd.to_numeric(df['delta energy of separate reagents'], errors='coerce')
+
+# Compute Pi Value forward per requirement:
+neg_mask = df['Complex Energy'] < 0
+
+if neg_mask.any():
+    # If at least one Complex Energy < 0:
+    #   - rows with Complex Energy < 0:  exp(-ComplexEnergy/RT)
+    #   - rows with Complex Energy >= 0 or NaN: 0
+    df['Pi Value forward'] = 0.0
+    df.loc[neg_mask, 'Pi Value forward'] = np.exp(-df.loc[neg_mask, 'Complex Energy'] / RT)
+else:
+    # Otherwise fall back to the original definition
+    df['Pi Value forward'] = np.exp(-df['delta energy of separate reagents'] / RT)
+    
 df['Pi Value reverse'] = np.exp(-df['Product Energy'] / (0.001987204259 * 298.15))
-
-# Ensure Pi Value is zero if Complex Energy > 1
-df.loc[df['Complex Energy'] > 1, 'Pi Value forward'] = 0
-df.loc[df['Product Energy'] > 1, 'Pi Value reverse'] = 0
 
 # Create a separate column for display in Excel
 df['Pi Value Display F'] = df['Pi Value forward']
@@ -293,11 +313,7 @@ else:
     df['Percentage Reverse'] = df['Pi Reverse Numeric'].apply(lambda x: x / pi_sum_reverse if pd.notna(x) else 0).round(3)*100
     
 
-df['Forward Barrier'] = np.where(
-    df['Complex Energy'] > 0,
-    df['TS Energy'],
-    df['TS Energy'] - df['Complex Energy']
-)
+df['Forward Barrier'] = df['TS Energy'] - df['delta energy of separate reagents']
 df['Reverse Barrier'] = df['TS Energy'] - df['Product Energy']
 
 
