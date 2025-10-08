@@ -17,13 +17,15 @@ export PATH=$bindir:$PATH
 # Move to working directory
 cd "$rootdir" || { echo "Error: Cannot cd to rootdir"; exit 1; }
 
+rm -f *.chk
+
 # Loading modules
 #module load openpyxl/3.1.2-GCCcore-12.3.0
 
 # Launching calculation
-cp ./Script_4_Reactants.py "$rootdir"/TS-CREST/Script_4_Reactants.py
-cp ./parameters.txt "$rootdir"/TS-CREST/parameters.txt
+cp ./Script_4_Reactants.py "$rootdir"/CREST/TS-CREST/Script_4_Reactants.py
+cp ./parameters.txt "$rootdir"/CREST/TS-CREST/parameters.txt
 
-cd "$rootdir"/TS-CREST/
+cd "$rootdir"/CREST/TS-CREST/
 chmod 777 Script_4_Reactants.py
 python Script_4_Reactants.py
