@@ -313,11 +313,8 @@ with open('script_CREST.sub', 'w') as file:
     file.write('#SBATCH --ntasks=6\n')
     file.write(f'#SBATCH --output=CREST_{base_name}.logfile\n')
     file.write('#SBATCH --time=48:00:00\n')
-    file.write('\n')
-    file.write(f'cd "{rootdir}"\n')
-    file.write('\n')
     file.write('# --- Modules strictly needed for xtb/CREST ---\n')
-    file.write('source ../activate_venv.sh\n')
+    file.write('source ../../activate_venv.sh\n')
     file.write('module load intel/2023a\n')  # keep if your xtb/CREST builds need this
     file.write('module load xtb/6.6.1-gfbf-2023a\n')
     file.write('module load CREST/2.12-gfbf-2023a\n')
@@ -327,9 +324,9 @@ with open('script_CREST.sub', 'w') as file:
     file.write(f'crest xtbopt.xyz --T 6 --uhf {multiplicityCREST} --chrg {charge} {Solvent_CREST} {NCI} '
                '--cinp constraints.inp --subrmsd > CrestAnalysis.txt\n')
     file.write('crest coord -cregen crest_conformers.xyz -ewin 30\n')
-    file.write('\n')
     file.write('# --- Python post-step in venv via run.sh ---\n')
     file.write('cp ../Script_1_RMSD_INPUT.py ./\n')
+    file.write('chmod 777 Script_1_RMSD_INPUT.py\n')
     file.write('dos2unix Script_1_RMSD_INPUT.py\n')
     file.write('./Script_1_RMSD_INPUT.py\n')
     file.write('\n')
@@ -338,9 +335,9 @@ with open('script_CREST.sub', 'w') as file:
 
 # Construction of CREST folder
 os.makedirs('CREST', exist_ok=True)
-shutil.copy('struc.xyz', 'CREST/struc.xyz')
+shutil.move('struc.xyz', 'CREST/struc.xyz')
 shutil.copy('parameters.txt', 'CREST/parameters.txt')
-shutil.copy('script_CREST.sub', 'CREST/script_CREST.sub')
+shutil.move('script_CREST.sub', 'CREST/script_CREST.sub')
 shutil.copy('../Script_1_RMSD_INPUT.py', 'CREST/Script_1_RMSD_INPUT.py')
 shutil.copy('constraints.inp', 'CREST/constraints.inp')
 
