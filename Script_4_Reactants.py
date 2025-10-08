@@ -224,5 +224,5 @@ if __name__ == "__main__":
     log_files = [f for f in os.listdir("./") if f.endswith("Complex.log")]
     parameters_file = "parameters.txt"
     molecule1_atoms, molecule2_atoms, sr_time, rootdir, charger1, charger2, multiplicityr1, multiplicityr2, basis_1, basis_2, basis_3, functional, dispersion, solvent = read_parameters(parameters_file)
-    dependency_script = os.path.join(rootdir, '5_BOLTCAR_Results.sub')
+    dependency_script = os.path.join(rootdir, '5_BOLTCAR_results.sub')
     launcher(log_files, parameters_file, dependency_script)
