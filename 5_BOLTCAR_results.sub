@@ -16,7 +16,7 @@ export PATH=$bindir:$PATH
 
 # Define working directories
 MAIN_DIR="$rootdir"
-TS_CREST_DIR="$MAIN_DIR/TS-CREST"
+TS_CREST_DIR="$MAIN_DIR/CREST/TS-CREST"
 RESULTS_DIR="$MAIN_DIR/Results"
 
 # Change to root directory
@@ -39,6 +39,7 @@ mkdir -p "$RESULTS_DIR/submits"
 cd "$TS_CREST_DIR" || { echo "Error: Cannot cd to $TS_CREST_DIR"; exit 1; }
 chmod 777 Script_5_Results_BOLTCAR.py
 python Script_5_Results_BOLTCAR.py
+rm -f *.chk
 
 cp ./BOLTCAR_results.xlsx "$RESULTS_DIR/BOLTCAR_results.xlsx"
 cp ./TS_analysis.xlsx "$RESULTS_DIR/TS_analysis.xlsx"
