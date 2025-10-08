@@ -87,7 +87,7 @@ with open('./parameters.txt', 'r') as parameters:
 
 #--------Check which TS's were found-------------
 
-with open("../CrestAnalysis.txt", "r") as crest:
+with open("CrestAnalysis.txt", "r") as crest:
     crestlines=crest.read()
 
     nconformers=re.search(r"number of unique conformers for further calc\s+(\d+)", crestlines)
@@ -180,7 +180,7 @@ def lastgeometry(filename):
         while (i-start)-1<size_molecule:
             strippedline=lines[i].split()
             number_list = [float(num) for num in strippedline]
-            coord.append(number_list)
+            coord.append(strippedline)
             i=i+1
     return coord
 
@@ -202,7 +202,7 @@ atomic_symbols = {
 
 def atomincoord(coord):
     for atom in coord:
-        atom_number = atom[1]
+        atom_number = int(atom[1])
         
         if atom_number in atomic_symbols:
             atom[1] = atomic_symbols[atom_number]
@@ -298,28 +298,36 @@ def energycleaner(list):
     maxenergy=max(energies)
     
     indices_to_remove = set()
+    indices_converged=[]
     
     for i, energy_1 in enumerate(energies):
         for j, energy_2 in enumerate(energies):
             if j > i:
                 energy_diff = abs(float(energy_1) - float(energy_2))
                 if 0 <= energy_diff < Energy_threshold:
+                    indices_converged.append([i,j])
                     indices_to_remove.add(j)        
+                    print(f"Structures {list[i]} and {list[j]} have converged in terms of energy with a difference of {energy_diff} kcal/mol.")
                 elif (float(minenergy)-float(energy_1))>Energy_window:
                     indices_to_remove.add(i)
                 elif (float(minenergy)-float(energy_2))>Energy_window:
                     indices_to_remove.add(j)
+                    
     cleanedlist = [logfile for k, logfile in enumerate(list) if k not in indices_to_remove]
-    
-    converged_list = [file for k, file in enumerate(list) if k in indices_to_remove]
+    tooloworhighenergy = [logfile for k, logfile in enumerate(list) if k in indices_to_remove]
+    converged_list = [[list[i], list[j]] for i, j in indices_converged]
 
     print("Structures that have converged in terms of energy: ")
     print(converged_list)
 
-    print("Structures that have not converged in terms of energy: ")
+    print("Structures that have a distinguished energy: ")
     print(cleanedlist)
     
-    return [cleanedlist,converged_list]
+    print("Structures that have a too high or low energy: ")
+    print(tooloworhighenergy)
+    
+    
+    return [cleanedlist,converged_list,tooloworhighenergy]
 
 def Bfinder(logfile):
     with open(logfile, "r") as file:
@@ -338,6 +346,8 @@ def Bfinder(logfile):
     Bx=float(sBline[3])
     By=float(sBline[4])
     Bz=float(sBline[5])
+
+    print("Rotational constants for "+logfile+" are "+str(Bx)+", "+str(By)+", "+str(Bz))
     
     return [Bx, By, Bz]
 
@@ -373,19 +383,22 @@ def Bcomparer(Bees1, Bees2):
         return False
                 
 def Bconverge(logfilelist):
-    Bcomp=Bcompiler(logfilelist)
-    
     Bconv=[]
-    for i, log1 in enumerate(Bcomp):
+    B_ind = []
+    for conformers_set in logfilelist:
+        Bcomp=Bcompiler(conformers_set)
+        log1 = Bcomp[0]
+        i = 0
         for j, log2 in enumerate(Bcomp):
             if j>i and log1[0]!=log2[0]:
+                #print(log1,log2)
                 outcome=Bcomparer(log1[1], log2[1])
+                #print(outcome)
                 if outcome==True and log2[0] not in Bconv:
                     Bconv.append(log2[0])
-    B_ind=logfilelist
-    for log in Bconv:
-        B_ind.remove(log)
-    #print((B_ind, Bconv))
+                elif outcome == False and log2[0] not in B_ind and log2[0] not in Bconv:
+                        B_ind.append(log2[0])
+    B_ind = [el for el in B_ind if el not in Bconv]    
     return (B_ind, Bconv)
 
 def cleaner(correctTS):
@@ -407,7 +420,7 @@ def cleaner(correctTS):
     print(Bconvergedlist)
     
     IRClist=[]
-    cleanedlogs = [log for log in energycleaned if log not in Bcleaned]
+    cleanedlogs = energycleaned + Bcleaned
     for log in cleanedlogs:
         xyzcorr=log[:-4]+".xyz"
         IRClist.append(xyzcorr)
@@ -548,9 +561,5 @@ def launcher(uplist,rootdir,binfolder):
         print("No jobs were submitted, skipping dependency job submission.")
     
 
-launcher(IRClist,rootdir,binfolder)
-
-
-    
-
+launcher(IRClist,rootdir,binfolder)    
 
