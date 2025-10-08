@@ -12,7 +12,7 @@ import sys
 # After pruning, calculation will be launch using DFT parameters define previously.
 
 # Get information from parameters.txt file
-with open('parameters.txt', 'r') as parameters:
+with open('../parameters.txt', 'r') as parameters:
     file_content = parameters.read()
 
     # Extract the atoms as lists of integers
@@ -181,7 +181,7 @@ with open('CrestAnalysis.txt', 'r') as readfile:
     last_line_2 = lines[-2].rstrip()
 
 if ' CREST terminated normally.' in last_line:
-    os.makedirs('./TS-CREST', exist_ok=True)
+    os.mkdir('./TS-CREST')
     shutil.copy('crest_conformers.xyz', './TS-CREST/crest_conformers.xyz') 
     with open('../log.txt', 'a') as log:
         log.write('CREST completed\n')
@@ -289,10 +289,9 @@ if ' CREST terminated normally.' in last_line:
         dependency_command = [
             "sbatch",
             f"--dependency=afterany:{dependency_str}",
-            f"--chdir={rootdir}",       
             extractor_script
         ]
-            
+    
         result = subprocess.run(dependency_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         if result.returncode == 0:
             print(f"Extractor job submitted successfully: {result.stdout}")
