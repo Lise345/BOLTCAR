@@ -32,6 +32,30 @@ Ensure you have:
 
 ### 1. Prepare Input
 
+---
+
+## 🧾 Input Files
+
+You must provide a Gaussian `.out` file in the 'data' folder with:
+- A complete frequency calculation
+- Geometry and standard orientation
+- Charge and multiplicity
+
+You must provide a constraints_NAMEOFTHEFILE.inp file, used to perform the CREST search.
+
+You must provide a parameters_NAMEOFTHEFILE.txt file, see below for more information.
+
+## Prepare the modules in a virtual environment
+
+Run the run.sh script to prepare your environment:
+
+```bash
+sbatch setup.sh
+```
+
+
+## Run the code
+
 You need a Gaussian `.out` file for a **transition state** geometry (with at least one imaginary frequency):
 
 ```bash
@@ -59,18 +83,6 @@ Each script then triggers the next via `.sub` files and job dependencies.
 | 5    | `Script_4_Reactants.py`         | Extracts separate reagents and launches optimization jobs           |
 | 6    | `Script_5_Results_BOLTCAR.py`   | Collects results, calculates rate constants, generates plots        |
 
----
-
-## 🧾 Input Files
-
-You must provide a Gaussian `.out` file with:
-- A complete frequency calculation
-- Geometry and standard orientation
-- Charge and multiplicity
-
-You must provide a constraints_NAMEOFTHEFILE.inp file, used to perform the CREST search.
-
-You must provide a parameters_NAMEOFTHEFILE.txt file, see below for more information.
 
 ---
 
