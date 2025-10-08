@@ -1,0 +1,14 @@
+# Core scientific stack analogous to SciPy-bundle
+numpy~=1.24
+scipy~=1.10
+pandas~=2.0           # include only if you use it
+scikit-learn~=1.3     # include only if you use it
+
+# Your explicit libs
+matplotlib==3.7.2
+openpyxl==3.1.2
+sPyRMSD==0.8.0
+
+# Open Babel Python bindings (use module instead if you rely on obabel CLI)
+openbabel-wheel>=3.1.1.10,<3.2
+
