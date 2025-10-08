@@ -33,6 +33,7 @@ cd "$rootdir" || { echo "Error: Cannot cd to $rootdir"; exit 1; }
 cp ../data/parameters_"$basename".txt ./parameters.txt 
 cp ../data/constraints_"$basename".inp ./constraints.inp
 cp ../data/"$inputfile" ./
+cp ../Script_1_RMSD_INPUT.py ./
 cp ../2_IRC_calculator.sub ./
 cp ../Script_2_IRC_Calculation.py ./
 cp ../3_StationaryPoints_calculator.sub ./
