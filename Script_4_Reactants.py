@@ -145,11 +145,10 @@ def write_gaussian_input(file_name, molecule, suffix, charge, multiplicity, func
 
     return output_path
 
-def create_submission_script(job_name, input_file, output_file,sr_time):
-    """Creates a SLURM submission script."""
+def create_submission_script(job_name, input_file, output_file, sr_time):
     script_name = f"{job_name}.sub"
     with open(script_name, 'w') as script:
-        script.write(f"""#!/bin/sh
+        script.write(f"""#!/bin/bash
 #SBATCH --job-name={job_name}
 #SBATCH --cpus-per-task=12
 #SBATCH --output={job_name}.logfile
@@ -158,12 +157,15 @@ def create_submission_script(job_name, input_file, output_file,sr_time):
 #SBATCH --mem-per-cpu=5GB
 
 module load Gaussian/G16.A.03-intel-2022a
-export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID
-mkdir -p $GAUSS_SCRDIR
-g16 -p=$SLURM_CPUS_PER_TASK -m=80GB < {input_file} > {output_file}
+
+# Use node-local TMPDIR for Gaussian scratch
+export GAUSS_SCRDIR="$TMPDIR/gauss_scrdir_${{SLURM_JOB_ID}}"
+mkdir -p "$GAUSS_SCRDIR"
+
+g16 -p="$SLURM_CPUS_PER_TASK" -m=80GB < "{input_file}" > "{output_file}"
+
+rm -rf "$GAUSS_SCRDIR"
 """)
-        script.write('rm -r ${VSC_SCRATCH_VO_USER:?}/{gauss_scrdir$SLURM_JOB_ID:?}\n')
-        script.write('\n')
     return script_name
 
 def launcher(log_files, parameters_file, dependency_script):
