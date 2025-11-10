@@ -248,13 +248,13 @@ if ' CREST terminated normally.' in last_line:
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
             gsub.write('\n')
             gsub.write('# Setting up Gaussian environment\n')
-            gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')  
-            gsub.write('mkdir -p $GAUSS_SCRDIR\n')
+            gsub.write('export GAUSS_SCRDIR="$TMPDIR/gauss_scrdir_${SLURM_JOB_ID}"\n')
+            gsub.write('mkdir -p "$GAUSS_SCRDIR"\n')
             gsub.write('#Launching calculation\n')
             gsub.write('export PATH={binfolder}:$PATH\n')
             gsub.write('dos2unix input_{experience_number}-{match}.inp\n')
             gsub.write(f'g16 < input_{experience_number}-{match}.inp > {base_name}_{experience_number}-{match}.log\n')
-            gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
+            gsub.write('  rm -rf -- "$GAUSS_SCRDIR"\n')
             gsub.write('\n')
     
         sbatch_command = f"sbatch {base_name}_{experience_number}-{match}g16.sub"
@@ -303,3 +303,4 @@ if ' CREST terminated normally.' in last_line:
         
 
        
+
