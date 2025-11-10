@@ -38,9 +38,12 @@ def extract_values(file_path):
     # Regexes (allow D/E notation)
     scf_re = re.compile(r'SCF Done:\s+E\([^)]*\)\s*=\s*(-?\d+(?:\.\d+)?(?:[DEde][+\-]?\d+)?)')
     gibbs_re = re.compile(r'Thermal correction to Gibbs Free Energy\s*=\s*(-?\d+(?:\.\d+)?(?:[DEde][+\-]?\d+)?)')
+    enth_re = re.compile(r' Thermal correction to Enthalpy\s*=\s*(-?\d+(?:\.\d+)?(?:[DEde][+\-]?\d+)?)')
+
 
     last_three_scf = deque(maxlen=3)  # will keep only the last 3 energies
     gibbs = None
+    enthalpy = None
 
     with open(file_path, 'r', errors='ignore') as fh:
         for line in fh:
@@ -48,7 +51,7 @@ def extract_values(file_path):
 
             # Bail out on Gaussian fatal error
             if "error termination via lnk1e" in low:
-                return np.nan, np.nan, np.nan, np.nan
+                return np.nan, np.nan, np.nan, np.nan, np.nan
 
             m = scf_re.search(line)
             if m:
@@ -62,6 +65,13 @@ def extract_values(file_path):
             if g:
                 try:
                     gibbs = float(g.group(1).replace('D', 'E').replace('d', 'e'))
+                except ValueError:
+                    pass
+            
+            e = enth_re.search(line)
+            if e:
+                try:
+                    enthalpy = float(e.group(1).replace('D', 'E').replace('d', 'e'))
                 except ValueError:
                     pass
 
@@ -78,9 +88,9 @@ def extract_values(file_path):
     # Print a quick diagnostic (optional)
     print(f"[extract_values] {file_path}")
     print(f"  SCF energies kept (oldest->newest): {list(last_three_scf)}")
-    print(f"  -> PVDZ: {pvdz}  PVTZ: {pvtz}  PVQZ: {pvqz}  |  Gibbs: {gibbs}")
+    print(f"  -> PVDZ: {pvdz}  PVTZ: {pvtz}  PVQZ: {pvqz}  |  Gibbs: {gibbs} | Enthalpy: {enthalpy}")
 
-    return pvdz, pvtz, pvqz, (np.nan if gibbs is None else gibbs)
+    return pvdz, pvtz, pvqz, (np.nan if gibbs is None else gibbs), (np.nan if enthalpy is None else enthalpy)
 
 
 def jobid(filename):
@@ -113,7 +123,7 @@ for filename in os.listdir(directory):
             continue
         file_path = os.path.join(directory, filename)
         
-        pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = extract_values(file_path)
+        pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy, enthalpy = extract_values(file_path)
         
         print(f"{identification_number} gives")
         print(f"{pvdz_energy} {pvtz_energy} {pvqz_energy}")
@@ -132,6 +142,7 @@ for filename in os.listdir(directory):
                     'Complex PVTZ Energy': pvtz_energy,
                     'Complex PVQZ Energy': pvqz_energy,
                     'Complex Gibbs Correction': gibbs_free_energy,
+                    'Complex Enthalpy Correction': enthalpy,
                 })
             elif filename.endswith('Complex_R1.log'):
                 data_dict[identification_number].update({
@@ -139,6 +150,7 @@ for filename in os.listdir(directory):
                     'ComplexR1 PVTZ Energy': pvtz_energy,
                     'ComplexR1 PVQZ Energy': pvqz_energy,
                     'ComplexR1 Gibbs Correction': gibbs_free_energy,
+                    'ComplexR1 Enthalpy Correction': enthalpy,
                 })
             elif filename.endswith('Complex_R2.log'):
                 data_dict[identification_number].update({
@@ -146,6 +158,7 @@ for filename in os.listdir(directory):
                     'ComplexR2 PVTZ Energy': pvtz_energy,
                     'ComplexR2 PVQZ Energy': pvqz_energy,
                     'ComplexR2 Gibbs Correction': gibbs_free_energy,
+                    'ComplexR2 Enthalpy Correction': enthalpy,
                 })
             elif filename.endswith('SP.log'):
                 data_dict[identification_number].update({
@@ -153,6 +166,7 @@ for filename in os.listdir(directory):
                     'TS PVTZ Energy': pvtz_energy,
                     'TS PVQZ Energy': pvqz_energy,
                     'TS Gibbs Correction': gibbs_free_energy,
+                    'TS Enthalpy Correction': enthalpy,
                 })
             elif filename.endswith('Product.log'):
                 data_dict[identification_number].update({
@@ -160,6 +174,7 @@ for filename in os.listdir(directory):
                     'Product PVTZ Energy': pvtz_energy,
                     'Product PVQZ Energy': pvqz_energy,
                     'Product Gibbs Correction': gibbs_free_energy,
+                    'Product Enthalpy Correction': enthalpy,
                 })
         else:
             # New logic when basis_1 is not CBS
@@ -171,26 +186,31 @@ for filename in os.listdir(directory):
                 data_dict[identification_number].update({
                     complex_basis_energy_label: pvqz_energy,  # Assign PVQZ energy to Complex basis_1 energy
                     'Complex Gibbs Correction': gibbs_free_energy,
+                    'Complex Enthalpy Correction': enthalpy,
                 })
             elif 'IRC' not in filename and filename.endswith('.log'):
                 data_dict[identification_number].update({
                     ts_basis_energy_label: pvqz_energy,  # Assign PVQZ energy to TS basis_1 energy
                     'TS Gibbs Correction': gibbs_free_energy,
+                    'TS Enthalpy Correction': enthalpy,
                 })
             elif filename.endswith('Product.log'):
                 data_dict[identification_number].update({
                     product_basis_energy_label: pvqz_energy,  # Assign PVQZ energy to Product basis_1 energy
                     'Product Gibbs Correction': gibbs_free_energy,
+                    'Product Enthalpy Correction': enthalpy,
                 })
             elif filename.endswith('Complex_R1.log'):
                 data_dict[identification_number].update({
                     'ComplexR1 PVQZ Energy': pvqz_energy,  # Assign PVQZ energy to ComplexR1 basis_1 energy
                     'ComplexR1 Gibbs Correction': gibbs_free_energy,
+                    'ComplexR1 Enthalpy Correction': enthalpy,
                 })
             elif filename.endswith('Complex_R2.log'):
                 data_dict[identification_number].update({
                     'ComplexR2 PVQZ Energy': pvqz_energy,  # Assign PVQZ energy to ComplexR2 basis_1 energy
                     'ComplexR2 Gibbs Correction': gibbs_free_energy,
+                    'ComplexR2 Enthalpy Correction': enthalpy,
                 })
 
 # Create DataFrame dynamically
@@ -229,13 +249,19 @@ else:
     df['Extrapolated Reagent 1 Energy'] = df.get('ComplexR1 PVQZ Energy', np.nan)
     df['Extrapolated Reagent 2 Energy'] = df.get('ComplexR2 PVQZ Energy', np.nan)
 
+df['Enth Separate reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Enthalpy Correction']+df['ComplexR2 Enthalpy Correction']
 df['Gibbs of separate reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
+df['Minimal Enth of separate reagents'] = df['Enth Separate reagents'].min()
 df['Minimal Gibbs of separate reagents'] = df['Gibbs of separate reagents'].min()
 df['Delta of separate reagents'] = df['Gibbs of separate reagents'] - df['Minimal Gibbs of separate reagents']
 
 df['Gibbs Complex Energy'] = df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] 
 df['Gibbs TS Energy'] = df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] 
 df['Gibbs Product Energy'] = df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] 
+
+df['Enth Complex Energy'] = df['Extrapolated Complex Energy'] + df['Complex Enthalpy Correction']
+df['Enth TS Energy'] = df['Extrapolated TS Energy'] + df['TS Enthalpy Correction']
+df['Enth Product Energy'] = df['Extrapolated Product Energy'] + df['Product Enthalpy Correction']
 
 df['Separate Reagents'] = 627.5 * (df['Gibbs of separate reagents'] - df['Minimal Gibbs of separate reagents'])
 df['Complex Energy'] = 627.5 * (df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] - df['Minimal Gibbs of separate reagents'])
@@ -248,7 +274,10 @@ df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce')
 df['TS Energy'] = pd.to_numeric(df['TS Energy'], errors='coerce').fillna(0)
 df['Product Energy'] = pd.to_numeric(df['Product Energy'], errors='coerce').fillna(0)
 
-
+df['Enthalpy Separate Reagents'] = 627.5 * (df['Enth Separate reagents'] - df['Enth Separate reagents'].min())
+df['Enthalpy Complex Energy'] = 627.5 * (df['Enth Complex Energy'] - df['Enth Separate reagents'].min())
+df['Enthalpy TS Energy'] = 627.5 * (df['Enth TS Energy'] - df['Enth Separate reagents'].min())
+df['Enthalpy Product Energy'] = 627.5 * (df['Enth Product Energy'] - df['Enth Separate reagents'].min())
 
 # ---------- Kinetics & plotting add-on ----------
 
@@ -280,11 +309,7 @@ ref_forward = np.where(df['Complex Energy'].notna() & (df['Complex Energy'] < 0.
                        df['Complex Energy'],
                        df['Separate Reagents'])
 
-# ΔG‡ (kcal/mol) forward: TS - reference
-dg_f_kcal = df['TS Energy'] - ref_forward
 
-# ΔGr (kcal/mol): Product - reference
-dg_reac_kcal = df['Product Energy'] - ref_forward
 
 # Π values for forward selection:
 # - For rows with stable complex: use Complex energy in the Boltzmann factor
@@ -298,6 +323,10 @@ pi_forward_all = pd.Series(
     ),
     index=df.index
 )
+
+# =========================================
+# FORWARD: rates + 1dp Product weighting bucket
+# =========================================
 
 # --- 2) Special rule: duplicate Separate Reagents (rounded to 2 decimals) ---
 # Form groups by SR rounded to 2 decimals (NaNs coerced to 0 which is fine since SR was filled with 0 earlier)
@@ -336,6 +365,8 @@ df['Pi (forward ref)'] = pi_forward_all
 df['Pi (eff for %)']   = pi_eff
 df['Percentage']       = percentage
 
+dg_f_kcal = df['TS Energy'] - ref_forward
+
 # --- 3) Forward rate constants and weighted forward barrier/rate ---
 dg_f_Jpermol = dg_f_kcal * KCAL_TO_J_PER_MOL
 k_forward = pd.Series(eyring_prefactor * np.exp(-dg_f_Jpermol / (Rj * T)), index=df.index)
@@ -356,8 +387,15 @@ for group_val, group_idxs in df.groupby('_CR12_sum_5dp').groups.items():
     winner_idx = percentage.loc[group_idxs].idxmax()
     weighted_k_forward.loc[winner_idx] = k_sum * percentage.loc[winner_idx]
 
+# Weighted SR
+weighted_SR = df['Separate Reagents'] * percentage
+weighted_SR_enthalpy = df['Enthalpy Separate Reagents'] * percentage
 
-# --- Reverse direction ---
+
+# =========================================
+# REVERSE: rates + 1dp Product weighting bucket
+# =========================================
+
 prod_pvdz_5dp = df['Product PVDZ Energy'].round(5)
 df['_PROD_5dp'] = prod_pvdz_5dp
 
@@ -387,9 +425,7 @@ df['Pi (reverse ref)']   = pi_rev
 df['Pi_rev (eff for %)'] = pi_rev_eff
 df['Percentage_rev']     = pct_rev
 
-# =========================================
-# REVERSE: rates + 1dp Product weighting bucket
-# =========================================
+
 dg_r_kcal = df['TS Energy'] - df['Product Energy']
 dg_r_Jpermol = dg_r_kcal * 4184.0
 k_reverse = pd.Series(eyring_prefactor * np.exp(-dg_r_Jpermol / (Rj * T)), index=df.index)
@@ -406,6 +442,10 @@ for group_val, group_idxs in df.groupby('_PR_1dp').groups.items():
     winner_idx = pct_rev.loc[group_idxs].idxmax()
     weighted_k_reverse.loc[winner_idx] = k_sum * pct_rev.loc[winner_idx]
 
+# Weighted product
+weighted_Product = df['Product Energy'] * pct_rev
+weighted_Product_enthalpy = df['Enthalpy Product Energy'] * pct_rev
+
 
 # --- Store results (failed rows set to NaN so they never contribute to sums/plots) ---
 df['Pi (forward ref)']             = pi_forward_all.mask(mask_failed, np.nan)
@@ -414,13 +454,16 @@ df['Percentage']                   = percentage.mask(mask_failed, np.nan)
 df['k_forward (s^-1)']             = k_forward.mask(mask_failed, np.nan)
 df['Weighted k_forward (s^-1)']    = weighted_k_forward.mask(mask_failed, np.nan)
 df['ΔG‡_forward (kcal/mol)']       = dg_f_kcal.mask(mask_failed, np.nan)
+df['Weighted SR']     = weighted_SR.mask(mask_failed, np.nan)
+df['Weighted SR (enthalpy)']     = weighted_SR_enthalpy.mask(mask_failed, np.nan)
 
 df['Pi (reverse)']                 = pi_rev.mask(mask_failed, np.nan)
 df['Percentage (reverse)']         = pct_rev.mask(mask_failed, np.nan)
 df['k_reverse (s^-1)']             = k_reverse.mask(mask_failed, np.nan)
 df['Weighted k_reverse (s^-1)']    = (k_reverse * pct_rev).mask(mask_failed, np.nan)
 df['ΔG‡_reverse (kcal/mol)']       = dg_r_kcal.mask(mask_failed, np.nan)
-df['Weighted ΔG_reaction (kcal)']  = (dg_reac_kcal * pct_rev).mask(mask_failed, np.nan)
+df['Weighted Product']             = weighted_Product.mask(mask_failed, np.nan)
+df['Weighted Product (enthalpy)']             = weighted_Product_enthalpy.mask(mask_failed, np.nan)
 
 # Optional display columns (percent as 0–100 with two decimals) for Excel
 df['Percentage Forward Display'] = (df['Percentage'] * 100).round(2)
@@ -455,6 +498,7 @@ for col in round_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce').round(2)
 
 
+
 preferred = [
     'ID Number',
     'Separate Reagents','Complex Energy','TS Energy','Product Energy',
@@ -464,20 +508,22 @@ preferred = [
     'Weighted k_forward (s^-1)','Weighted k_reverse (s^-1)',
     'ΔG‡_forward (kcal/mol)','ΔG‡_reverse (kcal/mol)',
     'Delta of separate reagents',
+    'Enthalpy Separate Reagents','Enthalpy Complex Energy','Enthalpy TS Energy','Enthalpy Product Energy'
     # raw energies / components (include only if present)
     'ComplexR1 PVDZ Energy','ComplexR1 PVTZ Energy','ComplexR1 PVQZ Energy',
-    'Extrapolated Reagent 1 Energy','ComplexR1 Gibbs Correction',
+    'Extrapolated Reagent 1 Energy','ComplexR1 Gibbs Correction', 'Enth ComplexR1 Enthalpy Correction',
     'ComplexR2 PVDZ Energy','ComplexR2 PVTZ Energy','ComplexR2 PVQZ Energy',
-    'Extrapolated Reagent 2 Energy','ComplexR2 Gibbs Correction',
+    'Extrapolated Reagent 2 Energy','ComplexR2 Gibbs Correction', 'Enth ComplexR2 Enthalpy Correction',
     'Complex PVDZ Energy','Complex PVTZ Energy','Complex PVQZ Energy',
-    'Extrapolated Complex Energy','Complex Gibbs Correction','Gibbs Complex Energy',
+    'Extrapolated Complex Energy','Complex Gibbs Correction', 'Enth Complex Enthalpy Correction',
     'TS PVDZ Energy','TS PVTZ Energy','TS PVQZ Energy',
-    'Extrapolated TS Energy','TS Gibbs Correction','Gibbs TS Energy',
+    'Extrapolated TS Energy','TS Gibbs Correction', 'Enth TS Enthalpy Correction',
     'Product PVDZ Energy','Product PVTZ Energy','Product PVQZ Energy',
-    'Extrapolated Product Energy','Product Gibbs Correction','Gibbs Product Energy'
+    'Extrapolated Product Energy','Product Gibbs Correction','Enth Product Enthalpy Correction',    
 ]
+
 ordered = [c for c in preferred if c in df.columns]
-ordered += [c for c in df.columns if c not in ordered]  # append the rest
+#ordered += [c for c in df.columns if c not in ordered]  # append the rest
 
 def eyring_barrier_kcal_from_rate(k):
     # ΔG‡ = - R T ln( (k h) / (kB T) )  [J/mol]  → divide by 4184 for kcal/mol
@@ -494,22 +540,26 @@ dgF_eyring_kcal = eyring_barrier_kcal_from_rate(k_f_sum)
 dgR_eyring_kcal = eyring_barrier_kcal_from_rate(k_r_sum)
 
 # Your requested metric:
-mean_rxn_energy_via_eyring = dgF_eyring_kcal - dgR_eyring_kcal
 
 
 # A small Weighted Averages / totals sheet (tweak as you like)
 avg_data = pd.DataFrame({
     'Metric': [
         'Sum Weighted k_forward (s^-1)',
+        'Weighted ΔG‡_forward from Σ k_forward (kcal/mol)',
         'Sum Weighted k_reverse (s^-1)',
-        'Mean Reaction Energy (kcal/mol)',
-        'Mean Reaction Energy via Eyring (kcal/mol)'
+        'Weighted ΔG‡_reverse from Σ k_reverse (kcal/mol)',
+        'Mean Reaction Barrier (kcal/mol)',
+        'Mean Enthalpy of Reaction (kcal/mol)',
+
     ],
     'Value': [
         df['Weighted k_forward (s^-1)'].sum(),
+        dgF_eyring_kcal,
         df['Weighted k_reverse (s^-1)'].sum(),
-        df['Weighted ΔG_reaction (kcal)'].sum(skipna=True) if 'Weighted ΔG_reaction (kcal)' in df.columns else np.nan,
-        mean_rxn_energy_via_eyring,
+        dgR_eyring_kcal,
+        df['Weighted Product'].sum() - df['Weighted SR'].sum(),
+        df['Weighted Product (enthalpy)'].sum() - df['Weighted SR (enthalpy)'].sum(),
     ]
 })
 
