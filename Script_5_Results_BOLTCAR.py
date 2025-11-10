@@ -6,11 +6,17 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 
+# Constants
+R = 8.314   # kcal·mol^-1·K^-1
+T = 298.15
+RT = R * T
+
+
 #with open('./parameters.txt', 'r') as parameters:
     #file_content = parameters.read()
 
     #structurename = re.search(r'Energy of separate reagents (.+)', file_content)
-    #energy_of_separate_reagents = float(energy_of_separate_reagents_match.group(1))
+    #Gibbs of separate reagents = float(Gibbs of separate reagents_match.group(1))
 
 
 def read_parameters(file_path):
@@ -24,66 +30,57 @@ def read_parameters(file_path):
     return basis_1
 
 
-
 def extract_values(file_path):
-    pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy = None, None, None, None
-    last_scf_done = None
+    import re
+    import numpy as np
+    from collections import deque
 
-    found_pvdz, found_pvtz, found_pvqz = False, False, False  # Track section existence
+    # Regexes (allow D/E notation)
+    scf_re = re.compile(r'SCF Done:\s+E\([^)]*\)\s*=\s*(-?\d+(?:\.\d+)?(?:[DEde][+\-]?\d+)?)')
+    gibbs_re = re.compile(r'Thermal correction to Gibbs Free Energy\s*=\s*(-?\d+(?:\.\d+)?(?:[DEde][+\-]?\d+)?)')
 
-    print(f"Processing file: {file_path}")
+    last_three_scf = deque(maxlen=3)  # will keep only the last 3 energies
+    gibbs = None
 
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-        for line in lines:
-            if 'Error termination via Lnk1e' in line:
-                return np.nan, np.nan, np.nan, np.nan  # Mark calculation as failed
-            
-            if 'SCF Done:' in line:
-                match = re.search(r'SCF Done:\s+E\(\S+\)\s+=\s+(-?\d+\.\d+)', line)
-                if match:
-                    last_scf_done = float(match.group(1))  # Always keep last SCF value
+    with open(file_path, 'r', errors='ignore') as fh:
+        for line in fh:
+            low = line.lower()
 
-                    # Assign SCF Done value only if we are in the correct section
-                    if found_pvdz and pvdz_energy is None:
-                        pvdz_energy = last_scf_done
-                    if found_pvtz and pvtz_energy is None:
-                        pvtz_energy = last_scf_done
-                    if found_pvqz:
-                        pvqz_energy = last_scf_done
+            # Bail out on Gaussian fatal error
+            if "error termination via lnk1e" in low:
+                return np.nan, np.nan, np.nan, np.nan
 
-            # Detect basis set sections
-            if 'opt=calcfc' and 'pvdz' in line:
-                found_pvdz = True
-            if 'opt=calcfc' and 'pvtz' in line:
-                found_pvtz = True
-            if 'opt=calcfc' and 'pvqz' in line:
-                found_pvqz = True
-            else:
-                if 'opt=calcfc':
-                    found_pvqz = True
-                
-
-            if 'Thermal correction to Gibbs Free Energy=' in line:
+            m = scf_re.search(line)
+            if m:
                 try:
-                    gibbs_free_energy = float(line.split()[-1])
+                    val = float(m.group(1).replace('D', 'E').replace('d', 'e'))
+                    last_three_scf.append(val)
                 except ValueError:
-                    gibbs_free_energy = np.nan
+                    pass
 
-    # Ensure missing values are explicitly marked as NaN if a section was never found
-    if not found_pvdz:
-        pvdz_energy = None
-    if not found_pvtz:
-        pvtz_energy = None
-    if not found_pvqz:
-        pvqz_energy = None
-    if gibbs_free_energy is None:
-        gibbs_free_energy = None
+            g = gibbs_re.search(line)
+            if g:
+                try:
+                    gibbs = float(g.group(1).replace('D', 'E').replace('d', 'e'))
+                except ValueError:
+                    pass
 
-    print(f"Final extracted values for {file_path}:")
-    print(f"PVDZ: {pvdz_energy}, PVTZ: {pvtz_energy}, PVQZ: {pvqz_energy}, Gibbs Free Energy: {gibbs_free_energy}")
+    # Map last three SCF energies -> (pVDZ, pVTZ, pVQZ)
+    pvdz = pvtz = pvqz = np.nan
+    n = len(last_three_scf)
+    if n == 1:
+        pvqz = last_three_scf[0]
+    elif n == 2:
+        pvtz, pvqz = last_three_scf[0], last_three_scf[1]
+    elif n == 3:
+        pvdz, pvtz, pvqz = last_three_scf[0], last_three_scf[1], last_three_scf[2]
 
-    return pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy
+    # Print a quick diagnostic (optional)
+    print(f"[extract_values] {file_path}")
+    print(f"  SCF energies kept (oldest->newest): {list(last_three_scf)}")
+    print(f"  -> PVDZ: {pvdz}  PVTZ: {pvtz}  PVQZ: {pvqz}  |  Gibbs: {gibbs}")
+
+    return pvdz, pvtz, pvqz, (np.nan if gibbs is None else gibbs)
 
 
 def jobid(filename):
@@ -200,8 +197,6 @@ for filename in os.listdir(directory):
 df = pd.DataFrame.from_dict(data_dict, orient='index')
 
 
-
-
 if use_cbs_logic:
     df['Extrapolated Complex Energy'] = (
         (df['Complex PVDZ Energy'] * df['Complex PVQZ Energy'] - df['Complex PVTZ Energy']**2)
@@ -234,289 +229,455 @@ else:
     df['Extrapolated Reagent 1 Energy'] = df.get('ComplexR1 PVQZ Energy', np.nan)
     df['Extrapolated Reagent 2 Energy'] = df.get('ComplexR2 PVQZ Energy', np.nan)
 
-df['energy_of_separate_reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
-df['Minimal energy_of_separate_reagents'] = df['energy_of_separate_reagents'].min()
-df['delta energy of separate reagents'] = df['energy_of_separate_reagents'] - df['Minimal energy_of_separate_reagents']
+df['Gibbs of separate reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
+df['Minimal Gibbs of separate reagents'] = df['Gibbs of separate reagents'].min()
+df['Delta of separate reagents'] = df['Gibbs of separate reagents'] - df['Minimal Gibbs of separate reagents']
 
-df['Complex Energy'] = 627.5 * (df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] - df['Minimal energy_of_separate_reagents'])
-df['TS Energy'] = 627.5 * (df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] - df['Minimal energy_of_separate_reagents'])
-df['Product Energy'] = 627.5 * (df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] - df['Minimal energy_of_separate_reagents'])
+df['Gibbs Complex Energy'] = df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] 
+df['Gibbs TS Energy'] = df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] 
+df['Gibbs Product Energy'] = df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] 
+
+df['Separate Reagents'] = 627.5 * (df['Gibbs of separate reagents'] - df['Minimal Gibbs of separate reagents'])
+df['Complex Energy'] = 627.5 * (df['Extrapolated Complex Energy'] + df['Complex Gibbs Correction'] - df['Minimal Gibbs of separate reagents'])
+df['TS Energy'] = 627.5 * (df['Extrapolated TS Energy'] + df['TS Gibbs Correction'] - df['Minimal Gibbs of separate reagents'])
+df['Product Energy'] = 627.5 * (df['Extrapolated Product Energy'] + df['Product Gibbs Correction'] - df['Minimal Gibbs of separate reagents'])
 
 # Ensure 'Complex Energy' is numeric and handle NaN or non-numeric values
+df['Separate Reagents'] = pd.to_numeric(df['Separate Reagents'], errors='coerce').fillna(0)
 df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce')
 df['TS Energy'] = pd.to_numeric(df['TS Energy'], errors='coerce').fillna(0)
 df['Product Energy'] = pd.to_numeric(df['Product Energy'], errors='coerce').fillna(0)
 
 
-if use_cbs_logic:
-    # List of required energy columns for Pi calculation
-    required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy', 'TS PVDZ Energy', 'TS PVTZ Energy', 'TS PVQZ Energy', 'Product PVDZ Energy', 'Product PVTZ Energy', 'Product PVQZ Energy']
-else:
-    # List of required energy columns for Pi calculation when not using CBS logic
-    required_columns = ['Extrapolated Complex Energy', 'Extrapolated TS Energy', 'Extrapolated Product Energy']
 
-# Set Complex Energy to NaN if any required energy value is missing
-df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
+# ---------- Kinetics & plotting add-on ----------
 
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
-### Calculating percentages for Boltzmann ###
+# Physical constants (SI)
+kB = 1.380649e-23      # J·K^-1
+h  = 6.62607015e-34    # J·s
+T  = 298.15            # K
+Rj = 8.314462618       # J·mol^-1·K^-1
+KCAL_TO_J_PER_MOL = 4184.0
 
-# Constants
-R = 0.001987204259   # kcal·mol^-1·K^-1
-T = 298.15
-RT = R * T
+# Helper: Eyring prefactor (s^-1)
+eyring_prefactor = (kB * T) / h
 
-
-# Ensure numeric
-df['Complex Energy'] = pd.to_numeric(df['Complex Energy'], errors='coerce')
-df['delta energy of separate reagents'] = pd.to_numeric(df['delta energy of separate reagents'], errors='coerce')
-
-# Compute Pi Value forward per requirement:
-neg_mask = df['Complex Energy'] < 0
-
-if neg_mask.any():
-    # If at least one Complex Energy < 0:
-    #   - rows with Complex Energy < 0:  exp(-ComplexEnergy/RT)
-    #   - rows with Complex Energy >= 0 or NaN: 0
-    df['Pi Value forward'] = 0.0
-    df.loc[neg_mask, 'Pi Value forward'] = np.exp(-df.loc[neg_mask, 'Complex Energy'] / RT)
-else:
-    # Otherwise fall back to the original definition
-    df['Pi Value forward'] = np.exp(-df['delta energy of separate reagents'] / RT)
-    
-df['Pi Value reverse'] = np.exp(-df['Product Energy'] / (0.001987204259 * 298.15))
-
-# Create a separate column for display in Excel
-df['Pi Value Display F'] = df['Pi Value forward']
-df['Pi Value Display R'] = df['Pi Value reverse']
-
-# Replace NaN values with "Calculation failed" ONLY in the Excel output column
-df['Pi Forward'] = df['Pi Value Display F'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
-df['Pi Reverse'] = df['Pi Value Display R'].apply(lambda x: 'Calculation failed' if pd.isna(x) else x)
-
-# Convert Pi columns to numeric safely (invalid entries become NaN)
-df['Pi Forward Numeric'] = pd.to_numeric(df['Pi Forward'], errors='coerce')
-df['Pi Reverse Numeric'] = pd.to_numeric(df['Pi Reverse'], errors='coerce')
-
-# Recalculate sums with only valid numeric entries
-pi_sum_forward = df['Pi Forward Numeric'].sum(skipna=True)
-pi_sum_reverse = df['Pi Reverse Numeric'].sum(skipna=True)
-
-if pi_sum_forward == 0:  # Avoid division by zero
-    df['Percentage Forward'] = 0
-else:
-    df['Percentage Forward'] = df['Pi Forward Numeric'].apply(lambda x: x / pi_sum_forward if pd.notna(x) else 0).round(3)*100
-
-if pi_sum_reverse == 0:
-    df['Percentage Reverse'] = 0
-else:
-    df['Percentage Reverse'] = df['Pi Reverse Numeric'].apply(lambda x: x / pi_sum_reverse if pd.notna(x) else 0).round(3)*100
-    
-
-df['Forward Barrier'] = df['TS Energy'] - df['delta energy of separate reagents']
-df['Reverse Barrier'] = df['TS Energy'] - df['Product Energy']
+key_cols = ['Separate Reagents', 'Complex Energy', 'TS Energy', 'Product Energy']
+mask_failed = (
+    df[key_cols].isna().any(axis=1)
+    | (df[['Complex Energy','TS Energy','Product Energy']] == 0).all(axis=1)
+)
 
 
-# Calculate Rate Constant
-df['Forward Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['Forward Barrier']) * 1000 * 4.184 / (8.314 * 298.15))
-df['Reverse Rate Constant'] = ((298.15 * 1.380649E-23) / 6.62607015E-34) * np.exp(-(df['Reverse Barrier']) * 1000 * 4.184 / (8.314 * 298.15))
+# --- 1) Reference energies per row for forward direction ---
+# If Complex is stable (negative), use Complex as reference; else use Separate Reagents
+ref_forward = np.where(df['Complex Energy'].notna() & (df['Complex Energy'] < 0.0),
+                       df['Complex Energy'],
+                       df['Separate Reagents'])
 
-avg_forward = "Average not relevant, fastest reaction shown below"
-avg_reverse = "Error: no stable adducts found"
+# ΔG‡ (kcal/mol) forward: TS - reference
+dg_f_kcal = df['TS Energy'] - ref_forward
 
-# Ensure valid weights and rates for forward
-valid_forward_mask = pd.notna(df['Forward Rate Constant']) & pd.notna(df['Percentage Forward']) & (df['Percentage Forward'] > 0)
-if valid_forward_mask.any():
-    avg_forward_value = np.average(df.loc[valid_forward_mask, 'Forward Rate Constant'],
-                                   weights=df.loc[valid_forward_mask, 'Percentage Forward'])
-    avg_forward = "{:.1E}".format(avg_forward_value)
+# Π values for forward selection:
+# - For rows with stable complex: use Complex energy in the Boltzmann factor
+# - Otherwise: use Separate Reagents
+pi_forward_all = pd.Series(
+    np.exp(
+        - np.where(df['Complex Energy'].notna() & (df['Complex Energy'] < 0.0),
+                   df['Complex Energy'],
+                   df['Separate Reagents']
+        ) * KCAL_TO_J_PER_MOL / (Rj * T)
+    ),
+    index=df.index
+)
 
-# Ensure valid weights and rates for reverse
-valid_reverse_mask = pd.notna(df['Reverse Rate Constant']) & pd.notna(df['Percentage Reverse']) & (df['Percentage Reverse'] > 0)
-if valid_reverse_mask.any():
-    avg_reverse_value = np.average(df.loc[valid_reverse_mask, 'Reverse Rate Constant'],
-                                   weights=df.loc[valid_reverse_mask, 'Percentage Reverse'])
-    avg_reverse = "{:.1E}".format(avg_reverse_value)
+# --- 2) Special rule: duplicate Separate Reagents (rounded to 2 decimals) ---
+# Form groups by SR rounded to 2 decimals (NaNs coerced to 0 which is fine since SR was filled with 0 earlier)
+sr_round = df['Separate Reagents'].round(1)
+df['_SR_round_1dp'] = sr_round
+
+# Within each SR group, find the index with the smallest forward barrier TS - SR (NOT TS - Complex),
+# because your rule states it’s based on equality of separate reagents.
+# ensure mask_failed is the *safe* one and not overwritten
+delta_ts_minus_sr_raw = (df['TS Energy'] - df['Separate Reagents']).copy()
+
+# failed rows cannot win
+delta_ts_minus_sr_raw[mask_failed] = np.inf
+delta_ts_minus_sr_raw[~np.isfinite(delta_ts_minus_sr_raw)] = np.inf
+
+winners = delta_ts_minus_sr_raw.groupby(df['_SR_round_1dp']).idxmin()
+
+
+# Build "effective Π" for percentage: everyone keeps their Π, except
+# members of SR-equal groups that are NOT the winner → set Π_eff = 0
+pi_eff = pi_forward_all.copy()
+
+for group_val, winner_idx in winners.items():
+    members = df.index[(df['_SR_round_1dp'] == group_val) & (~mask_failed)]
+    if len(members) > 1:
+        losers = [i for i in members if i != winner_idx]
+        pi_eff.loc[losers] = 0.0
+
+pi_eff_valid = pi_eff.mask(mask_failed, np.nan)
+pi_sum = pi_eff_valid.sum(skipna=True)
+percentage = pi_eff_valid / pi_sum if pi_sum and np.isfinite(pi_sum) else pd.Series(0.0, index=df.index)
+
+
+df['Pi (forward ref)'] = pi_forward_all
+df['Pi (eff for %)']   = pi_eff
+df['Percentage']       = percentage
+
+# --- 3) Forward rate constants and weighted forward barrier/rate ---
+dg_f_Jpermol = dg_f_kcal * KCAL_TO_J_PER_MOL
+k_forward = pd.Series(eyring_prefactor * np.exp(-dg_f_Jpermol / (Rj * T)), index=df.index)
+
+
+# Group-by-1dp rule for SUM of k_forward
+df['_SR_round_1dp'] = df['Separate Reagents'].round(1)
+weighted_k_forward = pd.Series(0.0, index=df.index)
+weighted_dgF_kcal  = pd.Series(0.0, index=df.index)
+
+for group_val, group_idxs in df.groupby('_SR_round_1dp').groups.items():
+    group_idxs = [i for i in group_idxs if not mask_failed.loc[i]]
+    if not group_idxs:
+        continue
+    # Sum forward rates and barrier heights only over valid rows in the 1dp group
+    k_sum = k_forward.loc[group_idxs].sum()
+    dg_sum_kcal = dg_f_kcal.loc[group_idxs].sum()
+    # Winner by (1dp) Percentage among valid rows
+    winner_idx = percentage.loc[group_idxs].idxmax()
+    weighted_k_forward.loc[winner_idx] = k_sum * percentage.loc[winner_idx]
+    weighted_dgF_kcal.loc[winner_idx]  = dg_sum_kcal * percentage.loc[winner_idx]
+
+# --- Reverse direction (no special duplicate rule), but EXCLUDE failed rows ---
+dg_r_kcal = df['TS Energy'] - df['Product Energy']
+dg_r_Jpermol = dg_r_kcal * 4184.0
+k_reverse = pd.Series(eyring_prefactor * np.exp(-dg_r_Jpermol / (Rj * T)), index=df.index)
+
+pi_rev = pd.Series(np.exp(- df['Product Energy'] * 4184.0 / (Rj * T)), index=df.index)
+pi_rev_valid = pi_rev.mask(mask_failed, np.nan)
+pi_rev_sum = pi_rev_valid.sum(skipna=True)
+pct_rev = pi_rev_valid / pi_rev_sum if pi_rev_sum and np.isfinite(pi_rev_sum) else pd.Series(0.0, index=df.index)
+
+# --- Store results (failed rows set to NaN so they never contribute to sums/plots) ---
+df['Pi (forward ref)']             = pi_forward_all.mask(mask_failed, np.nan)
+df['Pi (eff for %)']               = pi_eff.mask(mask_failed, np.nan)
+df['Percentage']                   = percentage.mask(mask_failed, np.nan)
+df['k_forward (s^-1)']             = k_forward.mask(mask_failed, np.nan)
+df['Weighted k_forward (s^-1)']    = weighted_k_forward.mask(mask_failed, np.nan)
+df['ΔG‡_forward (kcal/mol)']       = dg_f_kcal.mask(mask_failed, np.nan)
+df['Weighted ΔG‡_forward (kcal)']  = weighted_dgF_kcal.mask(mask_failed, np.nan)
+
+df['Pi (reverse)']                 = pi_rev.mask(mask_failed, np.nan)
+df['Percentage (reverse)']         = pct_rev.mask(mask_failed, np.nan)
+df['k_reverse (s^-1)']             = k_reverse.mask(mask_failed, np.nan)
+df['Weighted k_reverse (s^-1)']    = (k_reverse * pct_rev).mask(mask_failed, np.nan)
+df['ΔG‡_reverse (kcal/mol)']       = dg_r_kcal.mask(mask_failed, np.nan)
+df['Weighted ΔG‡_reverse (kcal)']  = (dg_r_kcal * pct_rev).mask(mask_failed, np.nan)
+
+# Optional display columns (percent as 0–100 with two decimals) for Excel
+df['Percentage Forward Display'] = (df['Percentage'] * 100).round(2)
+df['Percentage Reverse Display'] = (df['Percentage (reverse)'] * 100).round(2)
 
 
 
-lowest_forward = ""
+# ---------- Excel export ----------
 
-# Check if the avg_forward message was used
-if avg_forward == "Average not relevant, fastest reaction shown in Excel":
-    # Instead of relying on valid_forward_mask, just use all valid Forward Rate Constants
-    valid_forward_rate_mask = pd.notna(df['Forward Rate Constant']) & (df['Forward Rate Constant'] > 0)
-    if valid_forward_rate_mask.any():
-        lowest_forward_value = df.loc[valid_forward_rate_mask, 'Forward Rate Constant'].max()
-        lowest_forward = "{:.1E}".format(lowest_forward_value)
+# Map to your older naming so your Excel columns are familiar
+df['Pi Value Display']     = df['Pi (eff for %)']   # what you show as Pi
+df['Percentage Forward']   = df['Percentage']
+df['Percentage Reverse']   = df['Percentage (reverse)']
+df['Percentage Forward Display'] = (df['Percentage Forward'] * 100).round(2)
+df['Percentage Reverse Display'] = (df['Percentage Reverse'] * 100).round(2)
+df['Forward Barrier']      = df['ΔG‡_forward (kcal/mol)']
+df['Reverse Barrier']      = df['ΔG‡_reverse (kcal/mol)']
+df['Forward Rate Constant'] = df['k_forward (s^-1)']
+df['Reverse Rate Constant'] = df['k_reverse (s^-1)']
 
 
-avg_data = pd.DataFrame({
-    'Weighted Average Forward rate Constant': [avg_forward, lowest_forward if lowest_forward else None],
-    'Weighted Average Reverse rate Constant': [avg_reverse, None]
-})
+# Optional: clean helper column
+df.drop(columns=['_SR_round_1dp'], inplace=True)
 
-# Sort by identification number
-df = df.sort_values(by='ID Number')
-
-# Check for stable complexes
-if (df['Complex Energy'] > 1).all():
-    min_ts_energy_row = df.loc[df['TS Energy'].idxmin()]
-    print(f"No stable complexes found, we assume the reaction will be the one with the lowest barrier, being {min_ts_energy_row['ID Number']}.")
-
-round_cols = ['Complex Energy', 'TS Energy', 'Product Energy', 'Pi Value Display', 'Percentage', 'Forward Barrier', 'Reverse Barrier']
+round_cols = [
+    'Separate Reagents','Complex Energy','TS Energy','Product Energy',
+    'Pi Value Display','Percentage Forward','Percentage Reverse',
+    'Forward Barrier','Reverse Barrier'
+]
 for col in round_cols:
     if col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce').round(1)
+        df[col] = pd.to_numeric(df[col], errors='coerce').round(2)
 
 
-first_cols = ['ID Number', 'Complex Energy', 'TS Energy', 'Product Energy', 'Forward Barrier', 'Percentage Forward', 'Reverse Barrier', 'Percentage Reverse', 'Forward Rate Constant', 'Reverse Rate Constant']
+preferred = [
+    'ID Number',
+    'Separate Reagents','Complex Energy','TS Energy','Product Energy',
+    'Forward Barrier','Percentage Forward Display','Reverse Barrier','Percentage Reverse Display',
+    'Forward Rate Constant','Reverse Rate Constant',
+    'Forward Rate (group sum @1dp)', 
+    'Weighted k_forward (s^-1)','Weighted k_reverse (s^-1)',
+    'ΔG‡_forward (kcal/mol)','ΔG‡_reverse (kcal/mol)',
+    'Delta of separate reagents',
+    # raw energies / components (include only if present)
+    'ComplexR1 PVDZ Energy','ComplexR1 PVTZ Energy','ComplexR1 PVQZ Energy',
+    'Extrapolated Reagent 1 Energy','ComplexR1 Gibbs Correction',
+    'ComplexR2 PVDZ Energy','ComplexR2 PVTZ Energy','ComplexR2 PVQZ Energy',
+    'Extrapolated Reagent 2 Energy','ComplexR2 Gibbs Correction',
+    'Complex PVDZ Energy','Complex PVTZ Energy','Complex PVQZ Energy',
+    'Extrapolated Complex Energy','Complex Gibbs Correction','Gibbs Complex Energy',
+    'TS PVDZ Energy','TS PVTZ Energy','TS PVQZ Energy',
+    'Extrapolated TS Energy','TS Gibbs Correction','Gibbs TS Energy',
+    'Product PVDZ Energy','Product PVTZ Energy','Product PVQZ Energy',
+    'Extrapolated Product Energy','Product Gibbs Correction','Gibbs Product Energy'
+]
+ordered = [c for c in preferred if c in df.columns]
+ordered += [c for c in df.columns if c not in ordered]  # append the rest
 
-# Then add the remaining ones that are not already in first_cols
-remaining_cols = [col for col in df.columns if col not in first_cols]
+# A small Weighted Averages / totals sheet (tweak as you like)
+avg_data = pd.DataFrame({
+    'Metric': [
+        'Sum Weighted k_forward (s^-1)',
+        'Sum Weighted k_reverse (s^-1)',
+        'Mean Forward Barrier (kcal/mol)',
+        'Mean Reverse Barrier (kcal/mol)'
+    ],
+    'Value': [
+        df['Weighted k_forward (s^-1)'].sum(),
+        df['Weighted k_reverse (s^-1)'].sum(),
+        df['Weighted ΔG‡_forward (kcal)'].mean(skipna=True),
+        df['Weighted ΔG‡_reverse (kcal)'].mean(skipna=True) if 'Weighted ΔG‡_reverse (kcal)' in df.columns else np.nan
+    ]
+})
 
-# Full column order
-new_columns = first_cols + remaining_cols
+# Columns to label as "Calc failed" in the spreadsheet view
+cols_to_flag = [
+    'Separate Reagents','Complex Energy','TS Energy','Product Energy',
+    'Forward Barrier','Reverse Barrier',
+    'Percentage Forward Display','Percentage Reverse Display',
+    'Forward Rate Constant','Reverse Rate Constant',
+    'Weighted forward barrier (per 1dp rule)',
+    'Weighted k_forward (s^-1)','Weighted k_reverse (s^-1)',
+    'ΔG‡_forward (kcal/mol)','ΔG‡_reverse (kcal/mol)',
+    'Weighted ΔG‡_forward (kcal)','Weighted ΔG‡_reverse (kcal)'
+]
+# map to your actual column names if you use different ones:
+name_map = {
+    'Forward Barrier': 'ΔG‡_forward (kcal/mol)',
+    'Reverse Barrier': 'ΔG‡_reverse (kcal/mol)',
+    'Forward Rate Constant': 'k_forward (s^-1)',
+    'Reverse Rate Constant': 'k_reverse (s^-1)'
+}
+cols_to_flag = [name_map.get(c, c) for c in cols_to_flag]
+cols_to_flag = [c for c in cols_to_flag if c in df.columns]
 
-# Save results
+df = df.sort_values(by='ID Number', ascending=True, na_position='last')
+
+df_excel = df.copy()
+df_excel.loc[mask_failed, cols_to_flag] = "Calc failed"
+
 with pd.ExcelWriter('BOLTCAR_results.xlsx') as writer:
-    # Save the full dataset
-    df.to_excel(writer, index=False, sheet_name='Full Results', columns=[col if col != 'Pi Value' else 'Pi Value Display' for col in new_columns])
-
-    # Save the weighted averages
+    # Ensure 'ID Number' is a normal column (not index)
+    df_reset = df.reset_index(drop=True)
+    df_reset.to_excel(writer, index=False, sheet_name='Full Results', columns=ordered)
     avg_data.to_excel(writer, index=False, sheet_name='Weighted Averages')
 
 print("Data extraction complete. The results are saved in 'BOLTCAR_results.xlsx'.")
 
 
-# Convert Pi Value to numeric where possible (ignoring "Calculation failed")
-df['Pi Value Numeric'] = pd.to_numeric(df['Pi Value forward'], errors='coerce')
 
-# Check if there are any positive Pi Values
-has_positive_pi = (df['Pi Value Numeric'] > 0).any()
+# ================== PLOTTING ==================
 
-# If there are positive Pi Values, filter for them; otherwise, use all IDs
-if has_positive_pi:
-    df_filtered = df[df['Pi Value Numeric'] > 0]
+
+# Filter to relevant rows (Pi > 0 / Percentage > 0); tweak if you prefer reverse as well
+df_filtered = df[df['Percentage'] > 0].copy()
+if 'ID Number' not in df_filtered.columns:
+    df_filtered['ID Number'] = df_filtered.index.astype(str)
+df_filtered['ID Number'] = df_filtered['ID Number'].astype(str)
+
+# Percent displays (if not already created)
+if 'Percentage Forward Display' not in df_filtered.columns:
+    df_filtered['Percentage Forward Display'] = (df_filtered.get('Percentage Forward', df_filtered['Percentage']) * 100).round(2)
+if 'Percentage Reverse Display' not in df_filtered.columns:
+    df_filtered['Percentage Reverse Display'] = (df_filtered.get('Percentage Reverse', df_filtered.get('Percentage (reverse)', 0.0)) * 100).round(2)
+
+# Energies for y-limits (ignore NaNs)
+energies_stack = np.vstack([
+    df_filtered['Separate Reagents'].to_numpy(dtype=float),
+    df_filtered['Complex Energy'].to_numpy(dtype=float, copy=True),
+    df_filtered['TS Energy'].to_numpy(dtype=float),
+    df_filtered['Product Energy'].to_numpy(dtype=float)
+])
+finite_vals = energies_stack[np.isfinite(energies_stack)]
+if finite_vals.size == 0:
+    min_energy, max_energy = -1.0, 1.0
 else:
-    df_filtered = df  # Use all IDs if no positive Pi Values exist
+    pad = max(1.0, 0.05 * (finite_vals.max() - finite_vals.min()))
+    min_energy = finite_vals.min() - pad
+    max_energy = finite_vals.max() + pad
+df_valid = df[~mask_failed].copy()
 
-# Ensure valid numeric values before plotting
-df_filtered = df_filtered.dropna(subset=['Complex Energy', 'TS Energy', 'Product Energy'])
+# Example: totals for legends
+sum_weighted_kf = float(df_valid.get('Weighted k_forward (s^-1)', pd.Series(dtype=float)).sum())
+sum_weighted_kr = float(df_valid.get('Weighted k_reverse (s^-1)', pd.Series(dtype=float)).sum())
+label_forward = f"Σ Weighted kf = {sum_weighted_kf:.2e}" if np.isfinite(sum_weighted_kf) else ""
+label_reverse = f"Σ Weighted kr = {sum_weighted_kr:.2e}" if np.isfinite(sum_weighted_kr) else ""
 
-# Define y-limits with margin
-min_energy = min(df_filtered['Complex Energy'].min(), df_filtered['TS Energy'].min(), df_filtered['Product Energy'].min()) - 1
-max_energy = max(df_filtered['Complex Energy'].max(), df_filtered['TS Energy'].max(), df_filtered['Product Energy'].max()) + 1
+# Your plotting filter should use df_valid (and e.g., df_filtered = df_valid[df_valid['Percentage'] > 0])
+df_filtered = df_valid[df_valid['Percentage'] > 0].copy()
 
-# Ensure the directory for saving plots exists
-output_dir = "plots"
+# Output directory
+output_dir = os.path.abspath("plots")
 os.makedirs(output_dir, exist_ok=True)
 
-# Plot and save Complex Energy
+
+# ---------- Overall scatter plots (all IDs) ----------
+
+# Separate Reagents (optional but handy)
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Complex Energy'], color='b', label=f'Complex Energy\nAvg kf = {avg_forward}')
+plt.scatter(df_filtered['ID Number'], df_filtered['Separate Reagents'], label='Separate Reagents')
 plt.xlabel('ID Number')
 plt.ylabel('Energy (kcal/mol)')
-plt.title('Complex Energies for ID Numbers with Pi > 0')
+plt.title('Separate Reagents Energies (Pi > 0)')
 plt.xticks(rotation=90)
 plt.legend()
 plt.ylim(min_energy, max_energy)
-plt.grid()
+plt.grid(True, which='both', linestyle='--', alpha=0.4)
+plt.tight_layout()
+plt.savefig(os.path.join(output_dir, "sr_energies.png"), dpi=300, bbox_inches='tight')
+plt.close()
+
+# Complex
+plt.figure(figsize=(10, 5))
+plt.scatter(df_filtered['ID Number'], df_filtered['Complex Energy'],
+            color='b',
+            label=f'Complex Energy\n{label_forward}' if label_forward else 'Complex Energy')
+plt.xlabel('ID Number')
+plt.ylabel('Energy (kcal/mol)')
+plt.title('Complex Energies (Pi > 0)')
+plt.xticks(rotation=90)
+plt.legend()
+plt.ylim(min_energy, max_energy)
+plt.grid(True, which='both', linestyle='--', alpha=0.4)
+plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "complex_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
-# Plot and save TS Energy
+# TS
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['TS Energy'], color='r', label='TS Energy')
+plt.scatter(df_filtered['ID Number'], df_filtered['TS Energy'], label='TS Energy')
 plt.xlabel('ID Number')
 plt.ylabel('Energy (kcal/mol)')
-plt.title('Transition State Energies for ID Numbers with Pi > 0')
+plt.title('Transition State Energies (Pi > 0)')
 plt.xticks(rotation=90)
 plt.legend()
 plt.ylim(min_energy, max_energy)
-plt.grid()
+plt.grid(True, which='both', linestyle='--', alpha=0.4)
+plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "ts_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
-# Plot and save Product Energy
+# Product
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color='g', label=f'Product Energy\nAvg kr = {avg_reverse}')
+plt.scatter(df_filtered['ID Number'], df_filtered['Product Energy'],
+            color='g',
+            label=f'Product Energy\n{label_reverse}' if label_reverse else 'Product Energy')
 plt.xlabel('ID Number')
 plt.ylabel('Energy (kcal/mol)')
-plt.title('Product Energies for ID Numbers with Pi > 0')
+plt.title('Product Energies (Pi > 0)')
 plt.xticks(rotation=90)
 plt.legend()
 plt.ylim(min_energy, max_energy)
-plt.grid()
+plt.grid(True, which='both', linestyle='--', alpha=0.4)
+plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "product_energies.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
-# Plot and save Percentages
+# Percentages (use the display %)
 plt.figure(figsize=(10, 5))
-plt.scatter(df_filtered['ID Number'], df_filtered['Percentage Forward'], color='orange', label='Forward %')
-plt.scatter(df_filtered['ID Number'], df_filtered['Percentage Reverse'], color='purple', label='Reverse %')
+plt.scatter(df_filtered['ID Number'], df_filtered['Percentage Forward Display'], label='Forward %')
+if 'Percentage Reverse Display' in df_filtered:
+    plt.scatter(df_filtered['ID Number'], df_filtered['Percentage Reverse Display'], label='Reverse %')
 plt.xlabel('ID Number')
 plt.ylabel('Percentage (%)')
-plt.title('Percentages for ID Numbers with Pi > 0')
+plt.title('Percentages (Pi > 0)')
 plt.xticks(rotation=90)
 plt.legend()
-plt.grid()
+plt.ylim(-1, 101)
+plt.grid(True, which='both', linestyle='--', alpha=0.4)
+plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "percentages.png"), dpi=300, bbox_inches='tight')
 plt.close()
 
-
-
-
-# Create 2x2 subplot layout
+# ---------- 2x2 combined page (whole dataset) ----------
 fig, axs = plt.subplots(2, 2, figsize=(16, 12))
 
-# Plot 1: Complex Energy
-axs[0, 0].scatter(df_filtered['ID Number'], df_filtered['Complex Energy'], color='b', label=f'Complex Energy\nAvg kf = {avg_forward}')
+axs[0, 0].scatter(df_filtered['ID Number'], df_filtered['Complex Energy'], color="#24BB7A", label=f'Complex Energy\n{label_forward}')
 axs[0, 0].set_title('Complex Energies')
 axs[0, 0].set_xlabel('ID Number')
 axs[0, 0].set_ylabel('Energy (kcal/mol)')
 axs[0, 0].set_ylim(min_energy, max_energy)
-axs[0, 0].legend()
-axs[0, 0].grid(True, which='both', linestyle='--', color='lightgrey')
-axs[0, 0].tick_params(axis='x', rotation=90)
+axs[0, 0].legend(); axs[0, 0].grid(True, linestyle='--', alpha=0.4); axs[0, 0].tick_params(axis='x', rotation=90)
 
-# Plot 2: TS Energy
-axs[0, 1].scatter(df_filtered['ID Number'], df_filtered['TS Energy'], color='r', label='TS Energy')
+axs[0, 1].scatter(df_filtered['ID Number'], df_filtered['TS Energy'], color="#065143", label='TS Energy')
 axs[0, 1].set_title('Transition State Energies')
 axs[0, 1].set_xlabel('ID Number')
 axs[0, 1].set_ylabel('Energy (kcal/mol)')
 axs[0, 1].set_ylim(min_energy, max_energy)
-axs[0, 1].legend()
-axs[0, 1].grid(True, which='both', linestyle='--', color='lightgrey')
-axs[0, 1].tick_params(axis='x', rotation=90)
+axs[0, 1].legend(); axs[0, 1].grid(True, linestyle='--', alpha=0.4); axs[0, 1].tick_params(axis='x', rotation=90)
 
-# Plot 3: Product Energy
-axs[1, 0].scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color='g', label=f'Product Energy\nAvg kr = {avg_reverse}')
+axs[1, 0].scatter(df_filtered['ID Number'], df_filtered['Product Energy'], color="#F38503", label=f'Product Energy\n{label_reverse}')
 axs[1, 0].set_title('Product Energies')
 axs[1, 0].set_xlabel('ID Number')
 axs[1, 0].set_ylabel('Energy (kcal/mol)')
 axs[1, 0].set_ylim(min_energy, max_energy)
-axs[1, 0].legend()
-axs[1, 0].grid(True, which='both', linestyle='--', color='lightgrey')
-axs[1, 0].tick_params(axis='x', rotation=90)
+axs[1, 0].legend(); axs[1, 0].grid(True, linestyle='--', alpha=0.4); axs[1, 0].tick_params(axis='x', rotation=90)
 
-# Plot 4: Percentages
-axs[1, 1].scatter(df_filtered['ID Number'], df_filtered['Percentage Forward'], color='orange', label='Forward %')
-axs[1, 1].scatter(df_filtered['ID Number'], df_filtered['Percentage Reverse'], color='purple', label='Reverse %')
+axs[1, 1].scatter(df_filtered['ID Number'], df_filtered['Percentage Forward Display'], color="#24BB7A", label='Forward %')
+if 'Percentage Reverse Display' in df_filtered:
+    axs[1, 1].scatter(df_filtered['ID Number'], df_filtered['Percentage Reverse Display'], color="#F38503", label='Reverse %')
 axs[1, 1].set_title('Reaction Percentages')
 axs[1, 1].set_xlabel('ID Number')
 axs[1, 1].set_ylabel('Percentage (%)')
-axs[1, 1].legend()
-axs[1, 1].grid(True, which='both', linestyle='--', color='lightgrey')
-axs[1, 1].tick_params(axis='x', rotation=90)
+axs[1, 1].set_ylim(-1, 101)
+axs[1, 1].legend(); axs[1, 1].grid(True, linestyle='--', alpha=0.4); axs[1, 1].tick_params(axis='x', rotation=90)
 
 plt.tight_layout()
-
-# Save as PDF
-pdf_path = os.path.join(output_dir,"BOLTCAR_combined_plots.pdf")
-plt.savefig(pdf_path, dpi=300, bbox_inches='tight')
+pdf_path_combined = os.path.join(output_dir, "BOLTCAR_combined_plots.pdf")
+plt.savefig(pdf_path_combined, dpi=300, bbox_inches='tight')
 plt.close()
+print(f"Combined 2x2 plots saved as '{pdf_path_combined}'.")
 
-print(f"Combined 2x2 plots saved as '{pdf_path}'.")
+# ---------- Per-ID bar plots into a single PDF ----------
+per_id_pdf = os.path.join(output_dir, "BOLTCAR_perID_plots.pdf")
+with PdfPages(per_id_pdf) as pdf:
+    for _, row in df_filtered.sort_values('ID Number').iterrows():
+        fig, ax = plt.subplots(figsize=(8.5, 5.5))
+        labels = ['Separate Reagents', 'Complex', 'TS', 'Product']
+        vals = [
+            float(row.get('Separate Reagents', np.nan)),
+            float(row.get('Complex Energy', np.nan)),
+            float(row.get('TS Energy', np.nan)),
+            float(row.get('Product Energy', np.nan))
+        ]
+        ax.bar(labels, vals)
+        pct_f = float(row.get('Percentage Forward Display', np.nan))
+        pct_r = float(row.get('Percentage Reverse Display', np.nan))
+        ttl = f"ID {row['ID Number']} | %Fwd={pct_f:.2f}%"
+        if np.isfinite(pct_r):
+            ttl += f" | %Rev={pct_r:.2f}%"
+        ax.set_title(ttl)
+        ax.set_ylabel('Energy (kcal/mol)')
+        ax.set_ylim(min_energy, max_energy)
+        ax.grid(axis='y', linestyle='--', alpha=0.4)
+        plt.tight_layout()
+        pdf.savefig(fig)
+        plt.close(fig)
 
-print(f"Plots saved in '{output_dir}' directory.")
+print(f"Per-ID bar plots written to '{per_id_pdf}'.")
+print(f"All plots saved in '{output_dir}'.")
+
+
