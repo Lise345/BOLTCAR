@@ -299,8 +299,8 @@ def launcherstatp(logfilelist):
                     gsub.write(f'#SBATCH --time={statp_time}\n')
                     gsub.write('\n')
                     gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
-                    gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')  # Temporary directory for Gaussian scratch files
-                    gsub.write('mkdir -p $GAUSS_SCRDIR\n')
+                    gsub.write('export GAUSS_SCRDIR="$TMPDIR/gauss_scrdir_${SLURM_JOB_ID}"\n')
+                    gsub.write('mkdir -p "$GAUSS_SCRDIR"\n')
                     
                     # Write Gaussian job commands
                     if distance1_CC1 > distance2_CC1:
@@ -319,7 +319,7 @@ def launcherstatp(logfilelist):
                     gsub.write(f'g16 < {filename1} > {output_filename1} &\n')
                     gsub.write(f'g16 < {filename2} > {output_filename2} &\n')
                     gsub.write(f'wait\n')
-                    gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
+                    gsub.write('rm -r "$GAUSS_SCRDIR"\n')
                     
                 # Submit the job
                 result = subprocess.run(
@@ -355,15 +355,15 @@ def launcherTS(xyzlist):
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
             gsub.write('\n')
             gsub.write('# Setting up Gaussian environment\n')
-            gsub.write('export GAUSS_SCRDIR=$VSC_SCRATCH_VO_USER/gauss_scrdir$SLURM_JOB_ID\n')  # Temporary directory for Gaussian scratch files
-            gsub.write('mkdir -p $GAUSS_SCRDIR\n')
+            gsub.write('export GAUSS_SCRDIR="$TMPDIR/gauss_scrdir_${SLURM_JOB_ID}"\n')
+            gsub.write('mkdir -p "$GAUSS_SCRDIR"\n')
             gsub.write('#Launching calculation\n')
             gsub.write('export PATH={binfolder}:$PATH\n')
             
             SP_inputgenerator(xyzfile,filename)
             
             gsub.write(f'g16 < {filename} > {outputfilename}\n')
-            gsub.write('rm -r ${VSC_SCRATCH_VO_USER:?}/gauss_scrdir${SLURM_JOB_ID:?}\n')
+            gsub.write('rm -r "$GAUSS_SCRDIR"\n')
             gsub.write('\n')
             gsub.close()
         
