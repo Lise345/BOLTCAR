@@ -494,7 +494,7 @@ dgF_eyring_kcal = eyring_barrier_kcal_from_rate(k_f_sum)
 dgR_eyring_kcal = eyring_barrier_kcal_from_rate(k_r_sum)
 
 # Your requested metric:
-mean_rxn_barrier_via_eyring = dgF_eyring_kcal - dgR_eyring_kcal
+mean_rxn_energy_via_eyring = dgF_eyring_kcal - dgR_eyring_kcal
 
 
 # A small Weighted Averages / totals sheet (tweak as you like)
@@ -502,14 +502,14 @@ avg_data = pd.DataFrame({
     'Metric': [
         'Sum Weighted k_forward (s^-1)',
         'Sum Weighted k_reverse (s^-1)',
-        'Mean Reaction Barrier (kcal/mol)',
-        'Mean Reaction Barriar via Eyring (kcal/mol)'
+        'Mean Reaction Energy (kcal/mol)',
+        'Mean Reaction Energy via Eyring (kcal/mol)'
     ],
     'Value': [
         df['Weighted k_forward (s^-1)'].sum(),
         df['Weighted k_reverse (s^-1)'].sum(),
         df['Weighted ΔG_reaction (kcal)'].sum(skipna=True) if 'Weighted ΔG_reaction (kcal)' in df.columns else np.nan,
-        mean_rxn_barrier_via_eyring,
+        mean_rxn_energy_via_eyring,
     ]
 })
 
