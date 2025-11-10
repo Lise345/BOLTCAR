@@ -283,6 +283,9 @@ ref_forward = np.where(df['Complex Energy'].notna() & (df['Complex Energy'] < 0.
 # ΔG‡ (kcal/mol) forward: TS - reference
 dg_f_kcal = df['TS Energy'] - ref_forward
 
+# ΔGr (kcal/mol): Product - reference
+dg_reac_kcal = df['Product Energy'] - ref_forward
+
 # Π values for forward selection:
 # - For rows with stable complex: use Complex energy in the Boltzmann factor
 # - Otherwise: use Separate Reagents
@@ -298,8 +301,9 @@ pi_forward_all = pd.Series(
 
 # --- 2) Special rule: duplicate Separate Reagents (rounded to 2 decimals) ---
 # Form groups by SR rounded to 2 decimals (NaNs coerced to 0 which is fine since SR was filled with 0 earlier)
-sr_round = df['Separate Reagents'].round(1)
-df['_SR_round_1dp'] = sr_round
+# Form groups by SR rounded to 2 decimals (NaNs coerced to 0 which is fine since SR was filled with 0 earlier)
+cr12_sum_5dp = (df['ComplexR1 PVDZ Energy']+df['ComplexR2 PVDZ Energy']).round(5)
+df['_CR12_sum_5dp'] = cr12_sum_5dp
 
 # Within each SR group, find the index with the smallest forward barrier TS - SR (NOT TS - Complex),
 # because your rule states it’s based on equality of separate reagents.
@@ -310,7 +314,7 @@ delta_ts_minus_sr_raw = (df['TS Energy'] - df['Separate Reagents']).copy()
 delta_ts_minus_sr_raw[mask_failed] = np.inf
 delta_ts_minus_sr_raw[~np.isfinite(delta_ts_minus_sr_raw)] = np.inf
 
-winners = delta_ts_minus_sr_raw.groupby(df['_SR_round_1dp']).idxmin()
+winners = delta_ts_minus_sr_raw.groupby(df['_CR12_sum_5dp']).idxmin()
 
 
 # Build "effective Π" for percentage: everyone keeps their Π, except
@@ -318,7 +322,7 @@ winners = delta_ts_minus_sr_raw.groupby(df['_SR_round_1dp']).idxmin()
 pi_eff = pi_forward_all.copy()
 
 for group_val, winner_idx in winners.items():
-    members = df.index[(df['_SR_round_1dp'] == group_val) & (~mask_failed)]
+    members = df.index[(df['_CR12_sum_5dp'] == group_val) & (~mask_failed)]
     if len(members) > 1:
         losers = [i for i in members if i != winner_idx]
         pi_eff.loc[losers] = 0.0
@@ -338,31 +342,70 @@ k_forward = pd.Series(eyring_prefactor * np.exp(-dg_f_Jpermol / (Rj * T)), index
 
 
 # Group-by-1dp rule for SUM of k_forward
-df['_SR_round_1dp'] = df['Separate Reagents'].round(1)
+df['_CR12_sum_5dp'] = df['Separate Reagents'].round(1)
 weighted_k_forward = pd.Series(0.0, index=df.index)
 weighted_dgF_kcal  = pd.Series(0.0, index=df.index)
 
-for group_val, group_idxs in df.groupby('_SR_round_1dp').groups.items():
+for group_val, group_idxs in df.groupby('_CR12_sum_5dp').groups.items():
     group_idxs = [i for i in group_idxs if not mask_failed.loc[i]]
     if not group_idxs:
         continue
     # Sum forward rates and barrier heights only over valid rows in the 1dp group
     k_sum = k_forward.loc[group_idxs].sum()
-    dg_sum_kcal = dg_f_kcal.loc[group_idxs].sum()
     # Winner by (1dp) Percentage among valid rows
     winner_idx = percentage.loc[group_idxs].idxmax()
     weighted_k_forward.loc[winner_idx] = k_sum * percentage.loc[winner_idx]
-    weighted_dgF_kcal.loc[winner_idx]  = dg_sum_kcal * percentage.loc[winner_idx]
 
-# --- Reverse direction (no special duplicate rule), but EXCLUDE failed rows ---
+
+# --- Reverse direction ---
+prod_pvdz_5dp = df['Product PVDZ Energy'].round(5)
+df['_PROD_5dp'] = prod_pvdz_5dp
+
+delta_ts_minus_prod = (df['TS Energy'] - df['Product Energy']).copy()
+delta_ts_minus_prod[mask_failed] = np.inf
+delta_ts_minus_prod[~np.isfinite(delta_ts_minus_prod)] = np.inf
+
+winners_rev = delta_ts_minus_prod.groupby(df['_PROD_5dp']).idxmin()
+
+# Base Π for reverse from Product energies
+pi_rev = pd.Series(np.exp(- df['Product Energy'] * 4184.0 / (Rj * T)), index=df.index)
+
+# Effective Π for reverse: zero non-winners within duplicate product groups
+pi_rev_eff = pi_rev.copy()
+for group_val, winner_idx in winners_rev.items():
+    members = df.index[(df['_PROD_5dp'] == group_val) & (~mask_failed)]
+    if len(members) > 1:
+        losers = [i for i in members if i != winner_idx]
+        pi_rev_eff.loc[losers] = 0.0
+
+pi_rev_eff_valid = pi_rev_eff.mask(mask_failed, np.nan)
+pi_rev_sum = pi_rev_eff_valid.sum(skipna=True)
+pct_rev = (pi_rev_eff_valid / pi_rev_sum) if pi_rev_sum and np.isfinite(pi_rev_sum) \
+          else pd.Series(0.0, index=df.index)
+
+df['Pi (reverse ref)']   = pi_rev
+df['Pi_rev (eff for %)'] = pi_rev_eff
+df['Percentage_rev']     = pct_rev
+
+# =========================================
+# REVERSE: rates + 1dp Product weighting bucket
+# =========================================
 dg_r_kcal = df['TS Energy'] - df['Product Energy']
 dg_r_Jpermol = dg_r_kcal * 4184.0
 k_reverse = pd.Series(eyring_prefactor * np.exp(-dg_r_Jpermol / (Rj * T)), index=df.index)
 
-pi_rev = pd.Series(np.exp(- df['Product Energy'] * 4184.0 / (Rj * T)), index=df.index)
-pi_rev_valid = pi_rev.mask(mask_failed, np.nan)
-pi_rev_sum = pi_rev_valid.sum(skipna=True)
-pct_rev = pi_rev_valid / pi_rev_sum if pi_rev_sum and np.isfinite(pi_rev_sum) else pd.Series(0.0, index=df.index)
+df['_PR_1dp'] = df['Product Energy'].round(1)
+weighted_k_reverse = pd.Series(0.0, index=df.index)
+weighted_dgR_kcal  = pd.Series(0.0, index=df.index)
+
+for group_val, group_idxs in df.groupby('_PR_1dp').groups.items():
+    group_idxs = [i for i in group_idxs if not mask_failed.loc[i]]
+    if not group_idxs:
+        continue
+    k_sum = k_reverse.loc[group_idxs].sum()
+    winner_idx = pct_rev.loc[group_idxs].idxmax()
+    weighted_k_reverse.loc[winner_idx] = k_sum * pct_rev.loc[winner_idx]
+
 
 # --- Store results (failed rows set to NaN so they never contribute to sums/plots) ---
 df['Pi (forward ref)']             = pi_forward_all.mask(mask_failed, np.nan)
@@ -371,14 +414,13 @@ df['Percentage']                   = percentage.mask(mask_failed, np.nan)
 df['k_forward (s^-1)']             = k_forward.mask(mask_failed, np.nan)
 df['Weighted k_forward (s^-1)']    = weighted_k_forward.mask(mask_failed, np.nan)
 df['ΔG‡_forward (kcal/mol)']       = dg_f_kcal.mask(mask_failed, np.nan)
-df['Weighted ΔG‡_forward (kcal)']  = weighted_dgF_kcal.mask(mask_failed, np.nan)
 
 df['Pi (reverse)']                 = pi_rev.mask(mask_failed, np.nan)
 df['Percentage (reverse)']         = pct_rev.mask(mask_failed, np.nan)
 df['k_reverse (s^-1)']             = k_reverse.mask(mask_failed, np.nan)
 df['Weighted k_reverse (s^-1)']    = (k_reverse * pct_rev).mask(mask_failed, np.nan)
 df['ΔG‡_reverse (kcal/mol)']       = dg_r_kcal.mask(mask_failed, np.nan)
-df['Weighted ΔG‡_reverse (kcal)']  = (dg_r_kcal * pct_rev).mask(mask_failed, np.nan)
+df['Weighted ΔG_reaction (kcal)']  = (dg_reac_kcal * pct_rev).mask(mask_failed, np.nan)
 
 # Optional display columns (percent as 0–100 with two decimals) for Excel
 df['Percentage Forward Display'] = (df['Percentage'] * 100).round(2)
@@ -401,7 +443,7 @@ df['Reverse Rate Constant'] = df['k_reverse (s^-1)']
 
 
 # Optional: clean helper column
-df.drop(columns=['_SR_round_1dp'], inplace=True)
+df.drop(columns=['_CR12_sum_5dp'], inplace=True)
 
 round_cols = [
     'Separate Reagents','Complex Energy','TS Energy','Product Energy',
@@ -437,19 +479,37 @@ preferred = [
 ordered = [c for c in preferred if c in df.columns]
 ordered += [c for c in df.columns if c not in ordered]  # append the rest
 
+def eyring_barrier_kcal_from_rate(k):
+    # ΔG‡ = - R T ln( (k h) / (kB T) )  [J/mol]  → divide by 4184 for kcal/mol
+    if not np.isfinite(k) or k <= 0.0:
+        return np.nan
+    return -(Rj * T / KCAL_TO_J_PER_MOL) * np.log((k * h) / (kB * T))
+
+# Pull summed weighted rates (safe if columns are missing)
+k_f_sum = df['Weighted k_forward (s^-1)'].sum(skipna=True) if 'Weighted k_forward (s^-1)' in df.columns else np.nan
+k_r_sum = df['Weighted k_reverse (s^-1)'].sum(skipna=True) if 'Weighted k_reverse (s^-1)' in df.columns else np.nan
+
+# Barriers via Eyring–Polanyi from summed weighted rates
+dgF_eyring_kcal = eyring_barrier_kcal_from_rate(k_f_sum)
+dgR_eyring_kcal = eyring_barrier_kcal_from_rate(k_r_sum)
+
+# Your requested metric:
+mean_rxn_barrier_via_eyring = dgF_eyring_kcal - dgR_eyring_kcal
+
+
 # A small Weighted Averages / totals sheet (tweak as you like)
 avg_data = pd.DataFrame({
     'Metric': [
         'Sum Weighted k_forward (s^-1)',
         'Sum Weighted k_reverse (s^-1)',
-        'Mean Forward Barrier (kcal/mol)',
-        'Mean Reverse Barrier (kcal/mol)'
+        'Mean Reaction Barrier (kcal/mol)',
+        'Mean Reaction Barriar via Eyring (kcal/mol)'
     ],
     'Value': [
         df['Weighted k_forward (s^-1)'].sum(),
         df['Weighted k_reverse (s^-1)'].sum(),
-        df['Weighted ΔG‡_forward (kcal)'].mean(skipna=True),
-        df['Weighted ΔG‡_reverse (kcal)'].mean(skipna=True) if 'Weighted ΔG‡_reverse (kcal)' in df.columns else np.nan
+        df['Weighted ΔG_reaction (kcal)'].sum(skipna=True) if 'Weighted ΔG_reaction (kcal)' in df.columns else np.nan,
+        mean_rxn_barrier_via_eyring,
     ]
 })
 
