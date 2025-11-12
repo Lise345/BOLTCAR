@@ -1,5 +1,5 @@
 $constrain
 force constant=0.25
-distance: 2, 3, 2.10102
-distance: 1, 8, 2.13986
+distance: 5, 2, 2.13
+distance: 6, 3, 2.10
 $end
