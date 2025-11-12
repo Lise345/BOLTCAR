@@ -14,6 +14,7 @@ RMSD threshold  0.5
 Energy threshold 0.05
 Energy window 10
 B_threshold 2
+Displacement vector 0.25
 
 --------------------------------------------------
 ------------------DFT parameters------------------
@@ -32,7 +33,7 @@ Multiplicity 1
 ChargeR1 0
 MultiplicityR1 1
 ChargeR2 0
-MultiplicityR1 1
+MultiplicityR2 1
 Time for IRC calcs 40
 Time for stationary calcs 40
 Time for TS calcs 40
@@ -41,12 +42,12 @@ Time for TS calcs 40
 ---------------Geometry information---------------
 --------------------------------------------------
 
-molecule1_atoms = 1 2 10 11 12 13 14 15 17 18
-molecule2_atoms = 3 4 5 6 7 8 9 16 19 20 21 22 23 24 25 26 27 28 29 30
-atom1 = 1
-atom2 = 8
-size_molecule = 30
-CC1_in = "1 8"
+molecule1_atoms = 1 2 3 4 7 8 9 10 20 21 22 23 24 25 26 39 40 41 42 43
+molecule2_atoms = 5 6 11 12 13 14 15 16 17 18 19 27 28 29 30 31 32 33 34 35 36 37 38 
+atom1 = 2
+atom2 = 5
+size_molecule = 43
+CC1_in = "2 5"
 
 --------------------------------------------------
 ---------------------Used path--------------------
