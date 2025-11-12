@@ -790,4 +790,3 @@ with PdfPages(per_id_pdf) as pdf:
 print(f"Per-ID bar plots written to '{per_id_pdf}'.")
 print(f"All plots saved in '{output_dir}'.")
 
-
