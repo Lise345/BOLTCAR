@@ -250,6 +250,7 @@ else:
     df['Extrapolated Reagent 2 Energy'] = df.get('ComplexR2 PVQZ Energy', np.nan)
 
 df['Enth Separate reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Enthalpy Correction']+df['ComplexR2 Enthalpy Correction']
+df['PVDZ Energy of SR'] = df['ComplexR1 PVDZ Energy']+df['ComplexR2 PVDZ Energy']
 df['Gibbs of separate reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
 df['Minimal Enth of separate reagents'] = df['Enth Separate reagents'].min()
 df['Minimal Gibbs of separate reagents'] = df['Gibbs of separate reagents'].min()
@@ -508,18 +509,18 @@ preferred = [
     'Weighted k_forward (s^-1)','Weighted k_reverse (s^-1)',
     'ΔG‡_forward (kcal/mol)','ΔG‡_reverse (kcal/mol)',
     'Delta of separate reagents',
-    'Enthalpy Separate Reagents','Enthalpy Complex Energy','Enthalpy TS Energy','Enthalpy Product Energy'
+    'Enthalpy Separate Reagents','Enthalpy Complex Energy','Enthalpy TS Energy','Enthalpy Product Energy',
     # raw energies / components (include only if present)
     'ComplexR1 PVDZ Energy','ComplexR1 PVTZ Energy','ComplexR1 PVQZ Energy',
     'Extrapolated Reagent 1 Energy','ComplexR1 Gibbs Correction', 'Enth ComplexR1 Enthalpy Correction',
     'ComplexR2 PVDZ Energy','ComplexR2 PVTZ Energy','ComplexR2 PVQZ Energy',
-    'Extrapolated Reagent 2 Energy','ComplexR2 Gibbs Correction', 'Enth ComplexR2 Enthalpy Correction',
+    'Extrapolated Reagent 2 Energy','ComplexR2 Gibbs Correction', 'Enth ComplexR2 Enthalpy Correction', 'Enth Separate reagents',
     'Complex PVDZ Energy','Complex PVTZ Energy','Complex PVQZ Energy',
     'Extrapolated Complex Energy','Complex Gibbs Correction', 'Enth Complex Enthalpy Correction',
     'TS PVDZ Energy','TS PVTZ Energy','TS PVQZ Energy',
     'Extrapolated TS Energy','TS Gibbs Correction', 'Enth TS Enthalpy Correction',
     'Product PVDZ Energy','Product PVTZ Energy','Product PVQZ Energy',
-    'Extrapolated Product Energy','Product Gibbs Correction','Enth Product Enthalpy Correction',    
+    'Extrapolated Product Energy','Product Gibbs Correction','Enth Product Enthalpy Correction','Enth Product Energy',    
 ]
 
 ordered = [c for c in preferred if c in df.columns]
@@ -789,4 +790,5 @@ with PdfPages(per_id_pdf) as pdf:
 
 print(f"Per-ID bar plots written to '{per_id_pdf}'.")
 print(f"All plots saved in '{output_dir}'.")
+
 
