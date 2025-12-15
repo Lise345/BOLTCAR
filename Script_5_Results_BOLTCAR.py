@@ -6,17 +6,11 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 
-# Constants
-R = 8.314   # kcal·mol^-1·K^-1
-T = 298.15
-RT = R * T
-
-
 #with open('./parameters.txt', 'r') as parameters:
     #file_content = parameters.read()
 
     #structurename = re.search(r'Energy of separate reagents (.+)', file_content)
-    #Gibbs of separate reagents = float(Gibbs of separate reagents_match.group(1))
+    #energy_of_separate_reagents = float(energy_of_separate_reagents_match.group(1))
 
 
 def read_parameters(file_path):
@@ -28,6 +22,7 @@ def read_parameters(file_path):
     else:
         basis_1 = None
     return basis_1
+
 
 
 def extract_values(file_path):
@@ -93,6 +88,7 @@ def extract_values(file_path):
     return pvdz, pvtz, pvqz, (np.nan if gibbs is None else gibbs), (np.nan if enthalpy is None else enthalpy)
 
 
+
 def jobid(filename):
     match = re.findall(r"(\d+)", filename) #Finds all sequences of numbers
     if match:
@@ -102,10 +98,13 @@ def jobid(filename):
     return numbers
 
 # Read basis_1 from parameters.txt
+
 parameters_file = 'parameters.txt'
 if not os.path.exists(parameters_file):
     raise FileNotFoundError(f"The file '{parameters_file}' does not exist.")
+    
 basis_1 = read_parameters(parameters_file)
+
 use_cbs_logic = basis_1.lower() == "cbs"
 
 directory = './'
@@ -217,6 +216,7 @@ for filename in os.listdir(directory):
 df = pd.DataFrame.from_dict(data_dict, orient='index')
 
 
+
 if use_cbs_logic:
     df['Extrapolated Complex Energy'] = (
         (df['Complex PVDZ Energy'] * df['Complex PVQZ Energy'] - df['Complex PVTZ Energy']**2)
@@ -250,7 +250,6 @@ else:
     df['Extrapolated Reagent 2 Energy'] = df.get('ComplexR2 PVQZ Energy', np.nan)
 
 df['Enth Separate reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Enthalpy Correction']+df['ComplexR2 Enthalpy Correction']
-df['PVDZ Energy of SR'] = df['ComplexR1 PVDZ Energy']+df['ComplexR2 PVDZ Energy']
 df['Gibbs of separate reagents'] = df['Extrapolated Reagent 1 Energy']+df['Extrapolated Reagent 2 Energy']+df['ComplexR1 Gibbs Correction']+df['ComplexR2 Gibbs Correction']
 df['Minimal Enth of separate reagents'] = df['Enth Separate reagents'].min()
 df['Minimal Gibbs of separate reagents'] = df['Gibbs of separate reagents'].min()
@@ -280,6 +279,44 @@ df['Enthalpy Complex Energy'] = 627.5 * (df['Enth Complex Energy'] - df['Enth Se
 df['Enthalpy TS Energy'] = 627.5 * (df['Enth TS Energy'] - df['Enth Separate reagents'].min())
 df['Enthalpy Product Energy'] = 627.5 * (df['Enth Product Energy'] - df['Enth Separate reagents'].min())
 
+if use_cbs_logic:
+    # List of required energy columns for Pi calculation
+    required_columns = ['Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy', 'TS PVDZ Energy', 'TS PVTZ Energy', 'TS PVQZ Energy', 'Product PVDZ Energy', 'Product PVTZ Energy', 'Product PVQZ Energy']
+else:
+    # List of required energy columns for Pi calculation when not using CBS logic
+    required_columns = ['Extrapolated Complex Energy', 'Extrapolated TS Energy', 'Extrapolated Product Energy']
+
+# Set Complex Energy to NaN if any required energy value is missing
+df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
+
+# ---------------- ERROR DETECTION ----------------
+
+# Energies that must exist for a row to be valid
+if use_cbs_logic:
+    required_energy_cols = [
+        'Complex PVDZ Energy', 'Complex PVTZ Energy', 'Complex PVQZ Energy',
+        'TS PVDZ Energy', 'TS PVTZ Energy', 'TS PVQZ Energy',
+        'Product PVDZ Energy', 'Product PVTZ Energy', 'Product PVQZ Energy',
+        'Complex Gibbs Correction', 'TS Gibbs Correction', 'Product Gibbs Correction'
+    ]
+else:
+    required_energy_cols = [
+        'Extrapolated Complex Energy',
+        'Extrapolated TS Energy',
+        'Extrapolated Product Energy',
+        'Complex Gibbs Correction',
+        'TS Gibbs Correction',
+        'Product Gibbs Correction'
+    ]
+
+# Identify rows with missing required data
+error_mask = df[required_energy_cols].isna().any(axis=1)
+
+# Split DataFrame
+df_errors = df.loc[error_mask].copy()
+df_valid  = df.loc[~error_mask].copy()
+
+
 # ---------- Kinetics & plotting add-on ----------
 
 import numpy as np
@@ -306,9 +343,9 @@ mask_failed = (
 
 # --- 1) Reference energies per row for forward direction ---
 # If Complex is stable (negative), use Complex as reference; else use Separate Reagents
-ref_forward = np.where(df['Complex Energy'].notna() & (df['Complex Energy'] < 0.0),
-                       df['Complex Energy'],
-                       df['Separate Reagents'])
+ref_forward = np.where(df_valid['Complex Energy'].notna() & (df_valid['Complex Energy'] < 0.0),
+                       df_valid['Complex Energy'],
+                       df_valid['Separate Reagents'])
 
 
 
@@ -317,12 +354,12 @@ ref_forward = np.where(df['Complex Energy'].notna() & (df['Complex Energy'] < 0.
 # - Otherwise: use Separate Reagents
 pi_forward_all = pd.Series(
     np.exp(
-        - np.where(df['Complex Energy'].notna() & (df['Complex Energy'] < 0.0),
-                   df['Complex Energy'],
-                   df['Separate Reagents']
+        - np.where(df_valid['Complex Energy'].notna() & (df_valid['Complex Energy'] < 0.0),
+                   df_valid['Complex Energy'].round(1),
+                   df_valid['Separate Reagents'].round(1)
         ) * KCAL_TO_J_PER_MOL / (Rj * T)
     ),
-    index=df.index
+    index=df_valid.index
 )
 
 # =========================================
@@ -332,19 +369,19 @@ pi_forward_all = pd.Series(
 # --- 2) Special rule: duplicate Separate Reagents (rounded to 2 decimals) ---
 # Form groups by SR rounded to 2 decimals (NaNs coerced to 0 which is fine since SR was filled with 0 earlier)
 # Form groups by SR rounded to 2 decimals (NaNs coerced to 0 which is fine since SR was filled with 0 earlier)
-cr12_sum_5dp = (df['ComplexR1 PVDZ Energy']+df['ComplexR2 PVDZ Energy']).round(5)
-df['_CR12_sum_5dp'] = cr12_sum_5dp
+cr12_sum_5dp = (df_valid['ComplexR1 PVDZ Energy']+df_valid['ComplexR2 PVDZ Energy']).round(5)
+df_valid['_CR12_sum_5dp'] = cr12_sum_5dp
 
 # Within each SR group, find the index with the smallest forward barrier TS - SR (NOT TS - Complex),
 # because your rule states it’s based on equality of separate reagents.
 # ensure mask_failed is the *safe* one and not overwritten
-delta_ts_minus_sr_raw = (df['TS Energy'] - df['Separate Reagents']).copy()
+delta_ts_minus_sr_raw = (df_valid['TS Energy'] - df_valid['Separate Reagents']).copy()
 
 # failed rows cannot win
 delta_ts_minus_sr_raw[mask_failed] = np.inf
 delta_ts_minus_sr_raw[~np.isfinite(delta_ts_minus_sr_raw)] = np.inf
 
-winners = delta_ts_minus_sr_raw.groupby(df['_CR12_sum_5dp']).idxmin()
+winners = delta_ts_minus_sr_raw.groupby(df_valid['_CR12_sum_5dp']).idxmin()
 
 
 # Build "effective Π" for percentage: everyone keeps their Π, except
@@ -352,33 +389,33 @@ winners = delta_ts_minus_sr_raw.groupby(df['_CR12_sum_5dp']).idxmin()
 pi_eff = pi_forward_all.copy()
 
 for group_val, winner_idx in winners.items():
-    members = df.index[(df['_CR12_sum_5dp'] == group_val) & (~mask_failed)]
+    members = df_valid.index[df_valid['_CR12_sum_5dp'] == group_val]
     if len(members) > 1:
         losers = [i for i in members if i != winner_idx]
         pi_eff.loc[losers] = 0.0
 
 pi_eff_valid = pi_eff.mask(mask_failed, np.nan)
 pi_sum = pi_eff_valid.sum(skipna=True)
-percentage = pi_eff_valid / pi_sum if pi_sum and np.isfinite(pi_sum) else pd.Series(0.0, index=df.index)
+percentage = pi_eff_valid / pi_sum if pi_sum and np.isfinite(pi_sum) else pd.Series(0.0, index=df_valid.index)
 
 
-df['Pi (forward ref)'] = pi_forward_all
-df['Pi (eff for %)']   = pi_eff
-df['Percentage']       = percentage
+df_valid['Pi (forward ref)'] = pi_forward_all
+df_valid['Pi (eff for %)']   = pi_eff
+df_valid['Percentage']       = percentage
 
-dg_f_kcal = df['TS Energy'] - ref_forward
+dg_f_kcal = df_valid['TS Energy'] - ref_forward
 
 # --- 3) Forward rate constants and weighted forward barrier/rate ---
 dg_f_Jpermol = dg_f_kcal * KCAL_TO_J_PER_MOL
-k_forward = pd.Series(eyring_prefactor * np.exp(-dg_f_Jpermol / (Rj * T)), index=df.index)
+k_forward = pd.Series(eyring_prefactor * np.exp(-dg_f_Jpermol / (Rj * T)), index=df_valid.index)
 
 
 # Group-by-1dp rule for SUM of k_forward
-df['_CR12_sum_5dp'] = df['Separate Reagents'].round(1)
-weighted_k_forward = pd.Series(0.0, index=df.index)
-weighted_dgF_kcal  = pd.Series(0.0, index=df.index)
+df_valid['_CR12_sum_5dp'] = df_valid['Separate Reagents'].round(1)
+weighted_k_forward = pd.Series(0.0, index=df_valid.index)
+weighted_dgF_kcal  = pd.Series(0.0, index=df_valid.index)
 
-for group_val, group_idxs in df.groupby('_CR12_sum_5dp').groups.items():
+for group_val, group_idxs in df_valid.groupby('_CR12_sum_5dp').groups.items():
     group_idxs = [i for i in group_idxs if not mask_failed.loc[i]]
     if not group_idxs:
         continue
@@ -389,30 +426,30 @@ for group_val, group_idxs in df.groupby('_CR12_sum_5dp').groups.items():
     weighted_k_forward.loc[winner_idx] = k_sum * percentage.loc[winner_idx]
 
 # Weighted SR
-weighted_SR = df['Separate Reagents'] * percentage
-weighted_SR_enthalpy = df['Enthalpy Separate Reagents'] * percentage
+weighted_SR = df_valid['Separate Reagents'] * percentage
+weighted_SR_enthalpy = df_valid['Enthalpy Separate Reagents'] * percentage
 
 
 # =========================================
 # REVERSE: rates + 1dp Product weighting bucket
 # =========================================
 
-prod_pvdz_5dp = df['Product PVDZ Energy'].round(5)
-df['_PROD_5dp'] = prod_pvdz_5dp
+prod_pvdz_5dp = df_valid['Product PVDZ Energy'].round(5)
+df_valid['_PROD_5dp'] = prod_pvdz_5dp
 
-delta_ts_minus_prod = (df['TS Energy'] - df['Product Energy']).copy()
+delta_ts_minus_prod = (df_valid['TS Energy'] - df_valid['Product Energy']).copy()
 delta_ts_minus_prod[mask_failed] = np.inf
 delta_ts_minus_prod[~np.isfinite(delta_ts_minus_prod)] = np.inf
 
-winners_rev = delta_ts_minus_prod.groupby(df['_PROD_5dp']).idxmin()
+winners_rev = delta_ts_minus_prod.groupby(df_valid['_PROD_5dp']).idxmin()
 
 # Base Π for reverse from Product energies
-pi_rev = pd.Series(np.exp(- df['Product Energy'] * 4184.0 / (Rj * T)), index=df.index)
+pi_rev = pd.Series(np.exp(- df_valid['Product Energy'] * 4184.0 / (Rj * T)), index=df_valid.index)
 
 # Effective Π for reverse: zero non-winners within duplicate product groups
 pi_rev_eff = pi_rev.copy()
 for group_val, winner_idx in winners_rev.items():
-    members = df.index[(df['_PROD_5dp'] == group_val) & (~mask_failed)]
+    members = df_valid.index[(df_valid['_PROD_5dp'] == group_val)]
     if len(members) > 1:
         losers = [i for i in members if i != winner_idx]
         pi_rev_eff.loc[losers] = 0.0
@@ -420,22 +457,22 @@ for group_val, winner_idx in winners_rev.items():
 pi_rev_eff_valid = pi_rev_eff.mask(mask_failed, np.nan)
 pi_rev_sum = pi_rev_eff_valid.sum(skipna=True)
 pct_rev = (pi_rev_eff_valid / pi_rev_sum) if pi_rev_sum and np.isfinite(pi_rev_sum) \
-          else pd.Series(0.0, index=df.index)
+          else pd.Series(0.0, index=df_valid.index)
 
-df['Pi (reverse ref)']   = pi_rev
-df['Pi_rev (eff for %)'] = pi_rev_eff
-df['Percentage_rev']     = pct_rev
+df_valid['Pi (reverse ref)']   = pi_rev
+df_valid['Pi_rev (eff for %)'] = pi_rev_eff
+df_valid['Percentage_rev']     = pct_rev
 
 
-dg_r_kcal = df['TS Energy'] - df['Product Energy']
+dg_r_kcal = df_valid['TS Energy'] - df_valid['Product Energy']
 dg_r_Jpermol = dg_r_kcal * 4184.0
-k_reverse = pd.Series(eyring_prefactor * np.exp(-dg_r_Jpermol / (Rj * T)), index=df.index)
+k_reverse = pd.Series(eyring_prefactor * np.exp(-dg_r_Jpermol / (Rj * T)), index=df_valid.index)
 
-df['_PR_1dp'] = df['Product Energy'].round(1)
-weighted_k_reverse = pd.Series(0.0, index=df.index)
-weighted_dgR_kcal  = pd.Series(0.0, index=df.index)
+df_valid['_PR_1dp'] = df_valid['Product Energy'].round(1)
+weighted_k_reverse = pd.Series(0.0, index=df_valid.index)
+weighted_dgR_kcal  = pd.Series(0.0, index=df_valid.index)
 
-for group_val, group_idxs in df.groupby('_PR_1dp').groups.items():
+for group_val, group_idxs in df_valid.groupby('_PR_1dp').groups.items():
     group_idxs = [i for i in group_idxs if not mask_failed.loc[i]]
     if not group_idxs:
         continue
@@ -444,50 +481,50 @@ for group_val, group_idxs in df.groupby('_PR_1dp').groups.items():
     weighted_k_reverse.loc[winner_idx] = k_sum * pct_rev.loc[winner_idx]
 
 # Weighted product
-weighted_Product = df['Product Energy'] * pct_rev
-weighted_Product_enthalpy = df['Enthalpy Product Energy'] * pct_rev
+weighted_Product = df_valid['Product Energy'] * pct_rev
+weighted_Product_enthalpy = df_valid['Enthalpy Product Energy'] * pct_rev
 
 
 # --- Store results (failed rows set to NaN so they never contribute to sums/plots) ---
-df['Pi (forward ref)']             = pi_forward_all.mask(mask_failed, np.nan)
-df['Pi (eff for %)']               = pi_eff.mask(mask_failed, np.nan)
-df['Percentage']                   = percentage.mask(mask_failed, np.nan)
-df['k_forward (s^-1)']             = k_forward.mask(mask_failed, np.nan)
-df['Weighted k_forward (s^-1)']    = weighted_k_forward.mask(mask_failed, np.nan)
-df['ΔG‡_forward (kcal/mol)']       = dg_f_kcal.mask(mask_failed, np.nan)
-df['Weighted SR']     = weighted_SR.mask(mask_failed, np.nan)
-df['Weighted SR (enthalpy)']     = weighted_SR_enthalpy.mask(mask_failed, np.nan)
+df_valid['Pi (forward ref)']             = pi_forward_all.mask(mask_failed, np.nan)
+df_valid['Pi (eff for %)']               = pi_eff.mask(mask_failed, np.nan)
+df_valid['Percentage']                   = percentage.mask(mask_failed, np.nan)
+df_valid['k_forward (s^-1)']             = k_forward.mask(mask_failed, np.nan)
+df_valid['Weighted k_forward (s^-1)']    = weighted_k_forward.mask(mask_failed, np.nan)
+df_valid['ΔG‡_forward (kcal/mol)']       = dg_f_kcal.mask(mask_failed, np.nan)
+df_valid['Weighted SR']     = weighted_SR.mask(mask_failed, np.nan)
+df_valid['Weighted SR (enthalpy)']     = weighted_SR_enthalpy.mask(mask_failed, np.nan)
 
-df['Pi (reverse)']                 = pi_rev.mask(mask_failed, np.nan)
-df['Percentage (reverse)']         = pct_rev.mask(mask_failed, np.nan)
-df['k_reverse (s^-1)']             = k_reverse.mask(mask_failed, np.nan)
-df['Weighted k_reverse (s^-1)']    = (k_reverse * pct_rev).mask(mask_failed, np.nan)
-df['ΔG‡_reverse (kcal/mol)']       = dg_r_kcal.mask(mask_failed, np.nan)
-df['Weighted Product']             = weighted_Product.mask(mask_failed, np.nan)
-df['Weighted Product (enthalpy)']             = weighted_Product_enthalpy.mask(mask_failed, np.nan)
+df_valid['Pi (reverse)']                 = pi_rev.mask(mask_failed, np.nan)
+df_valid['Percentage (reverse)']         = pct_rev.mask(mask_failed, np.nan)
+df_valid['k_reverse (s^-1)']             = k_reverse.mask(mask_failed, np.nan)
+df_valid['Weighted k_reverse (s^-1)']    = (k_reverse * pct_rev).mask(mask_failed, np.nan)
+df_valid['ΔG‡_reverse (kcal/mol)']       = dg_r_kcal.mask(mask_failed, np.nan)
+df_valid['Weighted Product']             = weighted_Product.mask(mask_failed, np.nan)
+df_valid['Weighted Product (enthalpy)']             = weighted_Product_enthalpy.mask(mask_failed, np.nan)
 
 # Optional display columns (percent as 0–100 with two decimals) for Excel
-df['Percentage Forward Display'] = (df['Percentage'] * 100).round(2)
-df['Percentage Reverse Display'] = (df['Percentage (reverse)'] * 100).round(2)
+df_valid['Percentage Forward Display'] = (df_valid['Percentage'] * 100).round(2)
+df_valid['Percentage Reverse Display'] = (df_valid['Percentage (reverse)'] * 100).round(2)
 
 
 
 # ---------- Excel export ----------
 
 # Map to your older naming so your Excel columns are familiar
-df['Pi Value Display']     = df['Pi (eff for %)']   # what you show as Pi
-df['Percentage Forward']   = df['Percentage']
-df['Percentage Reverse']   = df['Percentage (reverse)']
-df['Percentage Forward Display'] = (df['Percentage Forward'] * 100).round(2)
-df['Percentage Reverse Display'] = (df['Percentage Reverse'] * 100).round(2)
-df['Forward Barrier']      = df['ΔG‡_forward (kcal/mol)']
-df['Reverse Barrier']      = df['ΔG‡_reverse (kcal/mol)']
-df['Forward Rate Constant'] = df['k_forward (s^-1)']
-df['Reverse Rate Constant'] = df['k_reverse (s^-1)']
+df_valid['Pi Value Display']     = df_valid['Pi (eff for %)']   # what you show as Pi
+df_valid['Percentage Forward']   = df_valid['Percentage']
+df_valid['Percentage Reverse']   = df_valid['Percentage (reverse)']
+df_valid['Percentage Forward Display'] = (df_valid['Percentage Forward'] * 100).round(2)
+df_valid['Percentage Reverse Display'] = (df_valid['Percentage Reverse'] * 100).round(2)
+df_valid['Forward Barrier']      = df_valid['ΔG‡_forward (kcal/mol)']
+df_valid['Reverse Barrier']      = df_valid['ΔG‡_reverse (kcal/mol)']
+df_valid['Forward Rate Constant'] = df_valid['k_forward (s^-1)']
+df_valid['Reverse Rate Constant'] = df_valid['k_reverse (s^-1)']
 
 
 # Optional: clean helper column
-df.drop(columns=['_CR12_sum_5dp'], inplace=True)
+df_valid.drop(columns=['_CR12_sum_5dp'], inplace=True)
 
 round_cols = [
     'Separate Reagents','Complex Energy','TS Energy','Product Energy',
@@ -495,8 +532,8 @@ round_cols = [
     'Forward Barrier','Reverse Barrier'
 ]
 for col in round_cols:
-    if col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce').round(2)
+    if col in df_valid.columns:
+        df_valid[col] = pd.to_numeric(df_valid[col], errors='coerce').round(2)
 
 
 
@@ -523,8 +560,8 @@ preferred = [
     'Extrapolated Product Energy','Product Gibbs Correction','Enth Product Enthalpy Correction','Enth Product Energy',    
 ]
 
-ordered = [c for c in preferred if c in df.columns]
-#ordered += [c for c in df.columns if c not in ordered]  # append the rest
+
+
 
 def eyring_barrier_kcal_from_rate(k):
     # ΔG‡ = - R T ln( (k h) / (kB T) )  [J/mol]  → divide by 4184 for kcal/mol
@@ -533,8 +570,8 @@ def eyring_barrier_kcal_from_rate(k):
     return -(Rj * T / KCAL_TO_J_PER_MOL) * np.log((k * h) / (kB * T))
 
 # Pull summed weighted rates (safe if columns are missing)
-k_f_sum = df['Weighted k_forward (s^-1)'].sum(skipna=True) if 'Weighted k_forward (s^-1)' in df.columns else np.nan
-k_r_sum = df['Weighted k_reverse (s^-1)'].sum(skipna=True) if 'Weighted k_reverse (s^-1)' in df.columns else np.nan
+k_f_sum = df_valid['Weighted k_forward (s^-1)'].sum(skipna=True) if 'Weighted k_forward (s^-1)' in df_valid.columns else np.nan
+k_r_sum = df_valid['Weighted k_reverse (s^-1)'].sum(skipna=True) if 'Weighted k_reverse (s^-1)' in df_valid.columns else np.nan
 
 # Barriers via Eyring–Polanyi from summed weighted rates
 dgF_eyring_kcal = eyring_barrier_kcal_from_rate(k_f_sum)
@@ -555,12 +592,12 @@ avg_data = pd.DataFrame({
 
     ],
     'Value': [
-        df['Weighted k_forward (s^-1)'].sum(),
+        df_valid['Weighted k_forward (s^-1)'].sum(),
         dgF_eyring_kcal,
-        df['Weighted k_reverse (s^-1)'].sum(),
+        df_valid['Weighted k_reverse (s^-1)'].sum(),
         dgR_eyring_kcal,
-        df['Weighted Product'].sum() - df['Weighted SR'].sum(),
-        df['Weighted Product (enthalpy)'].sum() - df['Weighted SR (enthalpy)'].sum(),
+        df_valid['Weighted Product'].sum() - df_valid['Weighted SR'].sum(),
+        df_valid['Weighted Product (enthalpy)'].sum() - df_valid['Weighted SR (enthalpy)'].sum(),
     ]
 })
 
@@ -575,36 +612,58 @@ cols_to_flag = [
     'ΔG‡_forward (kcal/mol)','ΔG‡_reverse (kcal/mol)',
     'Weighted ΔG‡_forward (kcal)','Weighted ΔG‡_reverse (kcal)'
 ]
-# map to your actual column names if you use different ones:
 name_map = {
     'Forward Barrier': 'ΔG‡_forward (kcal/mol)',
     'Reverse Barrier': 'ΔG‡_reverse (kcal/mol)',
     'Forward Rate Constant': 'k_forward (s^-1)',
     'Reverse Rate Constant': 'k_reverse (s^-1)'
 }
-cols_to_flag = [name_map.get(c, c) for c in cols_to_flag]
-cols_to_flag = [c for c in cols_to_flag if c in df.columns]
 
-df = df.sort_values(by='ID Number', ascending=True, na_position='last')
+# Rename columns for Excel display
+df_valid_excel = df_valid.copy()
+df_errors_excel = df_errors.copy()
 
-df_excel = df.copy()
-df_excel.loc[mask_failed, cols_to_flag] = "Calc failed"
+
+# NOW build ordered list
+ordered = [c for c in preferred if c in df_valid_excel.columns]
+
+# Sort valid results
+df_valid_excel = df_valid_excel.sort_values(
+    by='ID Number',
+    ascending=True,
+    na_position='last'
+)
+
+# ---------------- Write Excel ----------------
 
 with pd.ExcelWriter('BOLTCAR_results.xlsx') as writer:
-    # Ensure 'ID Number' is a normal column (not index)
-    df_reset = df.reset_index(drop=True)
-    df_reset.to_excel(writer, index=False, sheet_name='Full Results', columns=ordered)
-    avg_data.to_excel(writer, index=False, sheet_name='Weighted Averages')
+    df_valid_excel.reset_index(drop=True).to_excel(
+        writer,
+        index=False,
+        sheet_name='Full Results',
+        columns=ordered
+    )
+
+    df_errors_excel.reset_index(drop=True).to_excel(
+        writer,
+        index=False,
+        sheet_name='Errors'
+    )
+
+    avg_data.to_excel(
+        writer,
+        index=False,
+        sheet_name='Weighted Averages'
+    )
 
 print("Data extraction complete. The results are saved in 'BOLTCAR_results.xlsx'.")
-
 
 
 # ================== PLOTTING ==================
 
 
 # Filter to relevant rows (Pi > 0 / Percentage > 0); tweak if you prefer reverse as well
-df_filtered = df[df['Percentage'] > 0].copy()
+df_filtered = df_valid[df_valid['Percentage'].gt(0)].copy()
 if 'ID Number' not in df_filtered.columns:
     df_filtered['ID Number'] = df_filtered.index.astype(str)
 df_filtered['ID Number'] = df_filtered['ID Number'].astype(str)
@@ -637,8 +696,7 @@ sum_weighted_kr = float(df_valid.get('Weighted k_reverse (s^-1)', pd.Series(dtyp
 label_forward = f"Σ Weighted kf = {sum_weighted_kf:.2e}" if np.isfinite(sum_weighted_kf) else ""
 label_reverse = f"Σ Weighted kr = {sum_weighted_kr:.2e}" if np.isfinite(sum_weighted_kr) else ""
 
-# Your plotting filter should use df_valid (and e.g., df_filtered = df_valid[df_valid['Percentage'] > 0])
-df_filtered = df_valid[df_valid['Percentage'] > 0].copy()
+
 
 # Output directory
 output_dir = os.path.abspath("plots")
@@ -790,5 +848,3 @@ with PdfPages(per_id_pdf) as pdf:
 
 print(f"Per-ID bar plots written to '{per_id_pdf}'.")
 print(f"All plots saved in '{output_dir}'.")
-
-
