@@ -690,11 +690,27 @@ else:
     max_energy = finite_vals.max() + pad
 df_valid = df[~mask_failed].copy()
 
-# Example: totals for legends
-sum_weighted_kf = float(df_valid.get('Weighted k_forward (s^-1)', pd.Series(dtype=float)).sum())
-sum_weighted_kr = float(df_valid.get('Weighted k_reverse (s^-1)', pd.Series(dtype=float)).sum())
+sum_weighted_kf = (
+    avg_data.loc[
+        avg_data['Metric'] == 'Sum Weighted k_forward (s^-1)',
+        'Value'
+    ]
+    .iloc[0]
+)
+sum_weighted_kr = (
+    avg_data.loc[
+        avg_data['Metric'] == 'Sum Weighted k_reverse (s^-1)',
+        'Value'
+    ]
+    .iloc[0]
+)
 label_forward = f"Σ Weighted kf = {sum_weighted_kf:.2e}" if np.isfinite(sum_weighted_kf) else ""
 label_reverse = f"Σ Weighted kr = {sum_weighted_kr:.2e}" if np.isfinite(sum_weighted_kr) else ""
+
+df_filtered = df_filtered.sort_values(
+    by='ID Number',
+    key=lambda s: s.astype(int)
+)
 
 
 
