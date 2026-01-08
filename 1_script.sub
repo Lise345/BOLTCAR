@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH --job-name=FASTCAR_sub
+#SBATCH --job-name=BoltCAR_sub
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=01:00:00
