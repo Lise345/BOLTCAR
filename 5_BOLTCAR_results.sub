@@ -1,8 +1,8 @@
 #!/bin/sh
-#SBATCH --job-name=FastcarResults
+#SBATCH --job-name=BoltCARResults
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --output=5_FastcarResults.logfile
+#SBATCH --output=5_BoltCARResults.logfile
 #SBATCH --time=01:00:00
 
 source ../activate_venv.sh
