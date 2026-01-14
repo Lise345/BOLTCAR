@@ -297,6 +297,7 @@ def launcherstatp(logfilelist):
                     gsub.write('#SBATCH --cpus-per-task=12\n')
                     gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
                     gsub.write(f'#SBATCH --time={statp_time}\n')
+					gsub.write(f'#SBATCH --mem=20GB\n')
                     gsub.write('\n')
                     gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
                     gsub.write('export GAUSS_SCRDIR="$TMPDIR/gauss_scrdir_${SLURM_JOB_ID}"\n')
@@ -350,6 +351,7 @@ def launcherTS(xyzlist):
             gsub.write('#SBATCH --cpus-per-task=12\n')
             gsub.write(f'#SBATCH --output='+filename[:-4]+'.logfile\n')
             gsub.write(f'#SBATCH --time={TS_time}\n')
+			gsub.write(f'#SBATCH --mem=20GB\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
