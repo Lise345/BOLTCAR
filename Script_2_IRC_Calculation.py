@@ -497,6 +497,7 @@ def launcher(uplist,rootdir,binfolder):
             gsub.write('#SBATCH --cpus-per-task=12\n')
             gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
             gsub.write(f'#SBATCH --time={irc_time}\n')
+            gsub.write(f'#SBATCH --mem=16GB\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
@@ -562,5 +563,6 @@ def launcher(uplist,rootdir,binfolder):
     
 
 launcher(IRClist,rootdir,binfolder)    
+
 
 
