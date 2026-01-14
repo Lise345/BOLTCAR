@@ -219,7 +219,7 @@ if ' CREST terminated normally.' in last_line:
         with open(listn[0], 'r') as fp:
             text = fp.read().splitlines(True)[2:]
             fout.writelines("%nprocshared=12\n")
-            fout.writelines("%mem=16GB\n")
+            fout.writelines("%mem=50GB\n")
             fout.writelines(f"# opt=(calcfc,ts,noeigen) freq {functional} {basis_1} {dispersion} {solvent}\n")
             fout.writelines("\n")
             fout.writelines(f"H2\n")
@@ -242,6 +242,7 @@ if ' CREST terminated normally.' in last_line:
             gsub.write(f'#SBATCH --job-name={base_name}_{experience_number}-{match}\n')
             gsub.write('#SBATCH --ntasks=12\n')
             gsub.write(f'#SBATCH --output={base_name}_{experience_number}-{match}.logfile\n')
+            gsub.write(f'#SBATCH --mem=64G\n')
             gsub.write(f'#SBATCH --time={TS_time}\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
