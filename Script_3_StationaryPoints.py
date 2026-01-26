@@ -449,8 +449,8 @@ for file in sorted(os.listdir(), key=natural_key):
         else:
             errorfiles.append(file)
 
-# Limit logfilelist to the first 50 files
-logfilelist = logfilelist[:50]
+# Limit logfilelist to the first 50 files (number is doubled because there are two SP per reaction)
+logfilelist = logfilelist[:100]
 
 # Print results
 print('LOGFILELIST:', logfilelist)
