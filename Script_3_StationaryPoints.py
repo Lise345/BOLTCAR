@@ -90,12 +90,21 @@ for column in sheet.iter_cols(values_only=True):
     data.append(list(column))
 
 
-listofTS=[]
-for caseofTS in data:
-    if data.index(caseofTS)==3:
-        for i in caseofTS:
-            if caseofTS.index(i)>0 and i!=None:
-                listofTS.append(i)
+listofTS = []
+
+# Select the 4th element (index 3) explicitly
+caseofTS = data[3]
+
+# Iterate in order, skipping index 0 and None values
+for i in caseofTS[1:]:
+    if i is not None:
+        listofTS.append(i)
+
+# Sort by name (string order)
+listofTS.sort()
+
+# Limit to the first 50
+listofTS = listofTS[:50]
 
 def SP_inputgenerator(xyzfile,filename):
     with open(xyzfile, 'r') as file:
@@ -294,10 +303,10 @@ def launcherstatp(logfilelist):
                 with open(reduced_filename + ".sub", "w") as gsub:
                     gsub.write('#!/bin/sh\n')
                     gsub.write(f'#SBATCH --job-name={reduced_filename}\n')
-                    gsub.write('#SBATCH --cpus-per-task=8\n')
+                    gsub.write('#SBATCH --cpus-per-task=16\n')
                     gsub.write(f'#SBATCH --output={reduced_filename}.logfile\n')
                     gsub.write(f'#SBATCH --time={statp_time}\n')
-					gsub.write(f'#SBATCH --mem=40GB\n')
+                    gsub.write(f'#SBATCH --mem=40GB\n')
                     gsub.write('\n')
                     gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')
                     gsub.write('export GAUSS_SCRDIR="$TMPDIR/gauss_scrdir_${SLURM_JOB_ID}"\n')
@@ -351,7 +360,7 @@ def launcherTS(xyzlist):
             gsub.write('#SBATCH --cpus-per-task=8\n')
             gsub.write(f'#SBATCH --output='+filename[:-4]+'.logfile\n')
             gsub.write(f'#SBATCH --time={TS_time}\n')
-			gsub.write(f'#SBATCH --mem=20GB\n')
+            gsub.write(f'#SBATCH --mem=20GB\n')
             gsub.write('\n')
             gsub.write('# Loading modules\n')
             gsub.write('module load Gaussian/G16.A.03-intel-2022a\n')  # Adjust based on the available Gaussian module
@@ -418,23 +427,30 @@ def launch_dependent_job():
 
 
 #-----error logging-----
+
+def natural_key(s):
+    return [int(t) if t.isdigit() else t for t in re.split(r'(\d+)', s)]
     
 logfilelist=[]
 errorfiles=[]
 
-for file in os.listdir():
-    if "IRC" in file and "log" in file and not "logfile" in file:
-        found = False  # Flag to track if "Point Number:   5" is found
-        with open(file, 'r') as f:
+for file in sorted(os.listdir(), key=natural_key):
+    if "IRC" in file and file.endswith(".log") and "logfile" not in file:
+        found = False
+
+        with open(file, "r") as f:
             for line in f:
                 if "Point Number:   5" in line:
                     found = True
-                    break  # Stop checking further lines in this file
-        
+                    break
+
         if found:
-            logfilelist.append(file)  # File contains the point, add to logfilelist
+            logfilelist.append(file)
         else:
-            errorfiles.append(file)  # File does not contain the point, add to errorfiles
+            errorfiles.append(file)
+
+# Limit logfilelist to the first 50 files
+logfilelist = logfilelist[:50]
 
 # Print results
 print('LOGFILELIST:', logfilelist)
