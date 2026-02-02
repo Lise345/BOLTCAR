@@ -97,7 +97,20 @@ def jobid(filename):
                 numbers=group
     return numbers
 
-# Read basis_1 from parameters.txt
+def has_normal_termination(file_path: str) -> bool:
+    """Return True iff the last non-empty line contains 'Normal termination'."""
+    try:
+        with open(file_path, "r", errors="ignore") as f:
+            for line in reversed(f.readlines()):
+                s = line.strip()
+                if s:  # last non-empty line
+                    return ("Normal termination" in s)
+        return False  # empty file
+    except OSError:
+        return False  # unreadable -> treat as failed
+
+
+####### Read basis_1 from parameters.txt #######
 
 parameters_file = 'parameters.txt'
 if not os.path.exists(parameters_file):
@@ -121,6 +134,22 @@ for filename in os.listdir(directory):
             print(f"⚠️ Could not extract ID from filename: {filename}")
             continue
         file_path = os.path.join(directory, filename)
+        
+        term_ok = has_normal_termination(file_path)
+
+        # ensure row exists early so we can store termination status even if parsing fails
+        if identification_number not in data_dict:
+            data_dict[identification_number] = {'ID Number': identification_number}
+
+        # Aggregate: if ANY file for this ID is not normally terminated => row fails
+        prev = data_dict[identification_number].get('Normal termination', True)
+        data_dict[identification_number]['Normal termination'] = (prev and term_ok)
+
+        # Optional: keep the failing filenames for debugging
+        if not term_ok:
+            bad = data_dict[identification_number].get('Termination failures', [])
+            bad.append(filename)
+            data_dict[identification_number]['Termination failures'] = bad
         
         pvdz_energy, pvtz_energy, pvqz_energy, gibbs_free_energy, enthalpy = extract_values(file_path)
         
@@ -289,8 +318,6 @@ else:
 # Set Complex Energy to NaN if any required energy value is missing
 df.loc[df[required_columns].isnull().any(axis=1), ['Complex Energy', 'TS Energy', 'Product Energy']] = np.nan
 
-# ---------------- ERROR DETECTION ----------------
-
 # Energies that must exist for a row to be valid
 if use_cbs_logic:
     required_energy_cols = [
@@ -309,13 +336,16 @@ else:
         'Product Gibbs Correction'
     ]
 
-# Identify rows with missing required data
+# ---- Base error mask: missing required data
 error_mask = df[required_energy_cols].isna().any(axis=1)
 
-# Split DataFrame
+# ---- Add Gaussian termination failures
+df['Normal termination'] = df['Normal termination'].fillna(True)
+error_mask |= ~df['Normal termination']
+
+# ---- Split DataFrame
 df_errors = df.loc[error_mask].copy()
 df_valid  = df.loc[~error_mask].copy()
-
 
 # ---------- Kinetics & plotting add-on ----------
 
@@ -338,6 +368,7 @@ key_cols = ['Separate Reagents', 'Complex Energy', 'TS Energy', 'Product Energy'
 mask_failed = (
     df[key_cols].isna().any(axis=1)
     | (df[['Complex Energy','TS Energy','Product Energy']] == 0).all(axis=1)
+    | (~df['Normal termination'])
 )
 
 
@@ -409,6 +440,9 @@ dg_f_kcal = df_valid['TS Energy'] - ref_forward
 dg_f_Jpermol = dg_f_kcal * KCAL_TO_J_PER_MOL
 k_forward = pd.Series(eyring_prefactor * np.exp(-dg_f_Jpermol / (Rj * T)), index=df_valid.index)
 
+
+# Group-by-1dp rule for SUM of k_forward
+df_valid['_CR12_sum_5dp'] = df_valid['Separate Reagents'].round(1)
 weighted_k_forward = pd.Series(0.0, index=df_valid.index)
 weighted_dgF_kcal  = pd.Series(0.0, index=df_valid.index)
 
