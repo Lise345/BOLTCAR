@@ -409,9 +409,6 @@ dg_f_kcal = df_valid['TS Energy'] - ref_forward
 dg_f_Jpermol = dg_f_kcal * KCAL_TO_J_PER_MOL
 k_forward = pd.Series(eyring_prefactor * np.exp(-dg_f_Jpermol / (Rj * T)), index=df_valid.index)
 
-
-# Group-by-1dp rule for SUM of k_forward
-df_valid['_CR12_sum_5dp'] = df_valid['Separate Reagents'].round(1)
 weighted_k_forward = pd.Series(0.0, index=df_valid.index)
 weighted_dgF_kcal  = pd.Series(0.0, index=df_valid.index)
 
